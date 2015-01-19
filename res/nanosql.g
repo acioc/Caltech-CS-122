@@ -1038,6 +1038,7 @@ base_expr returns [Expression e]
   }
   :
     e=literal_expr
+  | cn=column_name { e = new ColumnValue(cn); }
   | e=function_call
   | LPAREN
     ( e=logical_or_expr | sc=select_clause { e = new ScalarSubquery(sc); } )
