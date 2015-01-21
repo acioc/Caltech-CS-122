@@ -48,9 +48,9 @@ public class SqlTestCase {
 
 
     private String setupSQLPropName;
-    
-    
-    
+
+
+
     protected SqlTestCase(String setupSQLPropName) {
         this.setupSQLPropName = setupSQLPropName;
     }
@@ -136,6 +136,17 @@ public class SqlTestCase {
             throw result.getFailure();
 
         return result;
+    }
+
+
+    public CommandResult tryDoCommand(String command) throws Exception {
+        return tryDoCommand(command, false);
+    }
+
+
+    public List<TupleLiteral> getResultTuples(String command) throws Exception {
+        CommandResult result = tryDoCommand(command, true);
+        return result.getTuples();
     }
 
 
@@ -285,8 +296,8 @@ public class SqlTestCase {
 
         return sameResultsOrdered(expected, result.getTuples());
     }
-    
-    
+
+
     /**
      * This helper function examines a command's results against an expected
      * collection of tuples, and returns <tt>true</tt> if the number of result
@@ -308,13 +319,13 @@ public class SqlTestCase {
         if (result.failed()) {
             throw result.getFailure();
         }
-        
+
         return expected.length == result.getTuples().size();
     }
-    
-    
+
+
     /**
-     * This helper function takes in the name of a test table, and returns 
+     * This helper function takes in the name of a test table, and returns
      * <tt>true</tt> if there is at least one tuple in that table. This is
      * done by issuing a SQL command to select all values from the table.
      *
@@ -328,15 +339,15 @@ public class SqlTestCase {
      */
     public void testTableNotEmpty(String tableName) throws Throwable {
         CommandResult result;
-        
+
         result = server.doCommand("SELECT * FROM " + tableName, true);
         assert result.getTuples().size() > 0;
     }
-    
-    
+
+
     /**
-     * This helper function takes in an <tt>int</tt> value, and returns a 
-     * TupleLiteral containing just that <tt>int</tt> as a value. This is 
+     * This helper function takes in an <tt>int</tt> value, and returns a
+     * TupleLiteral containing just that <tt>int</tt> as a value. This is
      * done for convenience when writing tests. It is overloaded to also
      * accept an double.
      *
@@ -349,11 +360,11 @@ public class SqlTestCase {
         tmp.addValue(val);
         return tmp;
     }
-    
-    
+
+
     /**
-     * This helper function takes in a <tt>double</tt> value, and returns a 
-     * TupleLiteral containing just that <tt>double</tt> as a value. This is 
+     * This helper function takes in a <tt>double</tt> value, and returns a
+     * TupleLiteral containing just that <tt>double</tt> as a value. This is
      * done for convenience when writing tests. It is overloaded to also
      * accept an int.
      *
@@ -367,12 +378,12 @@ public class SqlTestCase {
         return tmp;
     }
 
-    
+
     /**
      * This helper function prints the tuples from a command's results
      * to System.out for debugging purposes. It assumes that these are
      * the results produced by the test. It is overloaded to accept an
-     * array of tuples as well. This function checks that the command 
+     * array of tuples as well. This function checks that the command
      * didn't throw any exceptions, before checking the length.
      *
      * @param result The results intended to be printed.
@@ -382,7 +393,7 @@ public class SqlTestCase {
         if (result.failed()) {
             throw result.getFailure();
         }
-        
+
         System.out.print("-------result: ");
         List<TupleLiteral> tups = result.getTuples();
         System.out.println(tups.size() + " tuple(s).");
@@ -390,11 +401,11 @@ public class SqlTestCase {
             System.out.println(t);
         }
     }
-    
-    
+
+
     /**
-     * This helper function prints the tuples in an array to System.out for 
-     * debugging purposes. It assumes that these are the expected results 
+     * This helper function prints the tuples in an array to System.out for
+     * debugging purposes. It assumes that these are the expected results
      * created by the programmer.. It is overloaded to accept the results
      * from a command (a CommandResult object) as well.
      *
