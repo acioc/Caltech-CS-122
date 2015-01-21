@@ -1,10 +1,7 @@
 package edu.caltech.test.nanodb.storage.heapfile;
 
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
-
+import org.testng.annotations.Test;
 
 import edu.caltech.nanodb.expressions.TupleLiteral;
 import edu.caltech.nanodb.server.CommandResult;
@@ -18,6 +15,7 @@ import edu.caltech.test.nanodb.storage.TableFormatTestCase;
  * performing various SQL operations against it.  It doesn't test the
  * implementation class directly.
  */
+@Test
 public class TestHeapTableFormat extends TableFormatTestCase {
 
     /**
@@ -123,7 +121,7 @@ public class TestHeapTableFormat extends TableFormatTestCase {
         TupleLiteral[] tuples = {
             new TupleLiteral(35, 521L, "abcd", 3.14, "goodbye", 2.71828),
             new TupleLiteral(6177281, -405691L, "fghi", 6.28, "puce", 54.669),
-            new TupleLiteral(-403662, 92818032810L, "qrstu", 965.2323,
+            new TupleLiteral(-403662, 928032810L, "qrstu", 965.2323,
                 "alongerstring", -31.2115)
         };
 
@@ -136,7 +134,7 @@ public class TestHeapTableFormat extends TableFormatTestCase {
         tryDoCommand("INSERT INTO heap_update VALUES (6177281, -405691, " +
             "'fghi', 6.28, 'puce', 54.669);");
 
-        tryDoCommand("INSERT INTO heap_update VALUES (-403662, 92818032810, " +
+        tryDoCommand("INSERT INTO heap_update VALUES (-403662, 928032810, " +
             "'qrstu', 965.2323, 'alongerstring', -31.2115);");
 
         // Make sure the data went in properly.

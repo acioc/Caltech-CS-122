@@ -15,15 +15,16 @@ import edu.caltech.nanodb.storage.*;
 @Test
 public class TestDBPage extends StorageTestCase {
 
-
-    /**
-	 * This is the filename used for the tests in this class.
-	 */
-	private final String TEST_FILE_NAME = "TestDBPage_TestFile";
+    /** This is the filename used for the tests in this class. */
+    private final String TEST_FILE_NAME = "TestDBPage_TestFile";
 
 
-	/** This is the file-manager instance used for the tests in this class. */
-	private FileManager fileMgr;
+    /** This is the file-manager instance used for the tests in this class. */
+    private FileManager fileMgr;
+
+
+    /** This is the buffer-manager instance used for tests in this class. */
+    private BufferManager bufMgr;
 
 
     /**
@@ -42,28 +43,29 @@ public class TestDBPage extends StorageTestCase {
     private DBPage dbPage;
 
 
-	/**
-	 * This set-up method initializes the file manager, data-file, and page that
+    /**
+     * This set-up method initializes the file manager, data-file, and page that
      * all tests will run against.
-	 */
-	@BeforeClass
-	public void beforeClass() throws IOException {
+     */
+    @BeforeClass
+    public void beforeClass() throws IOException {
 
-		fileMgr = new FileManagerImpl(testBaseDir);
+        fileMgr = new FileManagerImpl(testBaseDir);
+        bufMgr = new BufferManager(fileMgr);
 
         // Get DBFile
-		DBFileType type = DBFileType.HEAP_TUPLE_FILE;
+        DBFileType type = DBFileType.HEAP_TUPLE_FILE;
 
-		try {
-			int pageSize = DBFile.DEFAULT_PAGESIZE; // 8k
-			dbFile = fileMgr.createDBFile(TEST_FILE_NAME, type, pageSize);
-		}
+        try {
+             int pageSize = DBFile.DEFAULT_PAGESIZE; // 8k
+             dbFile = fileMgr.createDBFile(TEST_FILE_NAME, type, pageSize);
+        }
         catch (IOException e) {
-			// The file is already created
-		}
+            // The file is already created
+        }
 
-        dbPage = new DBPage(dbFile, 0);
-	}
+        dbPage = new DBPage(bufMgr, dbFile, 0);
+    }
 
 
 	/**

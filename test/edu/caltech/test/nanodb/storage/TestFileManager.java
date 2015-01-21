@@ -7,6 +7,9 @@ import java.io.IOException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import edu.caltech.nanodb.server.properties.PropertyRegistry;
+
+import edu.caltech.nanodb.storage.BufferManager;
 import edu.caltech.nanodb.storage.DBFile;
 import edu.caltech.nanodb.storage.DBFileType;
 import edu.caltech.nanodb.storage.DBPage;
@@ -22,10 +25,15 @@ public class TestFileManager extends StorageTestCase {
 
     private FileManager fileMgr;
 
+    private BufferManager bufMgr;
+
 
     @BeforeClass
     public void beforeClass() {
+        PropertyRegistry.getInstance().unregisterAllProperties();
+
         fileMgr = new FileManagerImpl(testBaseDir);
+        bufMgr = new BufferManager(fileMgr);
     }
 
 
@@ -43,8 +51,9 @@ public class TestFileManager extends StorageTestCase {
         assert f.length() == DBFile.DEFAULT_PAGESIZE;
         assert f.canRead();
 
-        byte[] buffer = new byte[DBFile.DEFAULT_PAGESIZE];
-        DBPage page0 = fileMgr.loadPage(dbf, 0, buffer);
+        DBPage page0 = new DBPage(bufMgr, dbf, 0);
+        fileMgr.loadPage(dbf, 0, page0.getPageData());
+
         assert page0.readByte(0) == DBFileType.HEAP_TUPLE_FILE.getID();
         assert DBFile.decodePageSize(page0.readByte(1)) == DBFile.DEFAULT_PAGESIZE;
 

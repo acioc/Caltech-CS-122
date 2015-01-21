@@ -21,6 +21,7 @@ import edu.caltech.nanodb.expressions.TupleComparator;
 import edu.caltech.nanodb.expressions.TupleLiteral;
 import edu.caltech.nanodb.relations.Tuple;
 import edu.caltech.nanodb.server.NanoDBServer;
+import edu.caltech.nanodb.server.properties.PropertyRegistry;
 import edu.caltech.nanodb.storage.StorageManager;
 
 
@@ -63,6 +64,8 @@ public class SqlTestCase {
 
     @BeforeClass
     public void beforeClass() throws Exception {
+        PropertyRegistry.getInstance().unregisterAllProperties();
+
         // Set up a separate testing data-directory so that we don't clobber
         // any existing data.
         testBaseDir = new File("test_datafiles");
