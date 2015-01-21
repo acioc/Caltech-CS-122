@@ -1,0 +1,25 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+  
+<suite name="nanodb-tests" verbose="1" >
+  <test name="general-tests">
+    <packages>
+      <package name="edu.caltech.test.nanodb.expressions" />
+      <package name="edu.caltech.test.nanodb.relations" />
+      <package name="edu.caltech.test.nanodb.sqlparse" />
+      <package name="edu.caltech.test.nanodb.util" />
+    </packages>
+
+    <classes>
+      <class name="edu.caltech.test.nanodb.storage.TestDBFile" />
+      <class name="edu.caltech.test.nanodb.storage.TestDBPage" />
+      <class name="edu.caltech.test.nanodb.storage.TestFileManager" />
+      <class name="edu.caltech.test.nanodb.storage.TestFilePointer" />
+    </classes>
+  </test>
+
+  <test name="assignment1-tests">
+    <classes>
+      <class name="edu.caltech.test.nanodb.storage.heapfile.TestHeapTableFormat" />
+    </classes>
+  </test>
+</suite>

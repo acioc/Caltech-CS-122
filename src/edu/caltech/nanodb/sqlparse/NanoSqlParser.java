@@ -1781,6 +1781,12 @@ public NanoSqlParser(ParserSharedInputState state) {
 				ct = new ColumnType(SQLDataType.INTEGER);
 				break;
 			}
+			case TYPE_BIGINT:
+			{
+				match(TYPE_BIGINT);
+				ct = new ColumnType(SQLDataType.BIGINT);
+				break;
+			}
 			case TYPE_FLOAT:
 			{
 				match(TYPE_FLOAT);

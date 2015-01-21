@@ -306,6 +306,7 @@ column_type returns [ColumnType ct]
   }
   :
     ( TYPE_INT | TYPE_INTEGER ) { ct = new ColumnType(SQLDataType.INTEGER); }
+  | TYPE_BIGINT { ct = new ColumnType(SQLDataType.BIGINT); }
   | TYPE_FLOAT { ct = new ColumnType(SQLDataType.FLOAT); }
   | TYPE_DOUBLE { ct = new ColumnType(SQLDataType.DOUBLE); }
   | ( TYPE_CHAR { dt = SQLDataType.CHAR; } | TYPE_VARCHAR { dt = SQLDataType.VARCHAR; } )

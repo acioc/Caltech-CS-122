@@ -209,11 +209,6 @@
                <!-- source="${java.version}" target="${java.version}" -->
 
             <src path="${testSrcDir}" />
-
-            <exclude name="**/TestDBPage.java" />
-            <exclude name="**/TestDataPage.java" />
-            <exclude name="**/TestFileManager.java" />
-
         </javac>
 
         <!--
@@ -242,22 +237,12 @@
         <testng suitename="nanodb-tests" outputdir="${testResultsDir}" verbose="2">
             <jvmarg value="-Dlog4j.configuration=logging.conf" />
 
+            <xmlfileset dir="." includes="testng.xml" />
+
             <classpath>
                 <pathelement path="${testBuildDir}" />
                 <path refid="test.path" />
             </classpath>
-
-            <classfileset dir="${testBuildDir}">
-                <include name="**/Test*.class" />
-
-                <!-- Specific tests can be excluded with lines like this. -->
-                <!--
-                <exclude name="**/TestDataPage.class" />
-                -->
-                <exclude name="**/TestDBPage.class" />
-                <exclude name="**/TestDataPage.class" />
-                <exclude name="**/TestFileManager.class" />
-            </classfileset>
         </testng>
 
         </jacoco:coverage>
