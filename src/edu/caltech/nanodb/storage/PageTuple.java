@@ -469,7 +469,6 @@ public abstract class PageTuple implements Tuple {
         checkColumnIndex(colIndex);
 
         if (value == null) {
-            // TODO:  Make sure the column allows NULL values.
             setNullColumnValue(colIndex);
         }
         else {
@@ -508,16 +507,38 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
+    	// We check our column value
+    	checkColumnIndex(iCol);
+    	
     	// If the null value is already true, we return
     	if (isNullValue(iCol))
     		return;
+    	
     	// Otherwise, we begin by setting the null flag to true
-    	// setNullFlag(iCol, true);
+    	setNullFlag(iCol, true);
+    	
     	// We then delete the information in the tuple range
-    	// deleteTupleDataRange(offset, length);
+    	// We first find the tuple's type
+    	ColumnType iColColumnType = schema.getColumnInfo(iCol).getType();
+    	// We then obtain its length if it is a VARCHAR
+    	int iColLength;
+    	int varcharLength = 0;
+    	if (iColColumnType.getBaseType() == SQLDataType.VARCHAR) {
+    		Object iColValue = getColumnValue(iCol);
+    		String dataValue = TypeConverter.getStringValue(iColValue);
+    		varcharLength = dataValue.length();
+    	}
+    	// We obtain our storage size
+    	iColLength = getStorageSize(iColColumnType, varcharLength);
+
+    	// We obtain our offset
+    	int iColOffset = valueOffsets[iCol];
     	
-        // throw new UnsupportedOperationException("TODO:  Implement!");
+    	// We delete the tuple range
+    	deleteTupleDataRange(iColOffset, iColLength);
     	
+    	// We update our valueOffset
+    	valueOffsets[iCol] = NULL_OFFSET;
     }
 
 
