@@ -486,27 +486,6 @@ public abstract class PageTuple implements Tuple {
      * @param iCol the index of the column to set to <tt>NULL</tt>
      */
     private void setNullColumnValue(int iCol) {
-        /*
-         * The column's flag in the tuple's null-bitmap must be set to true.
-         * Also, the data occupied by the column's value must be removed.
-         * There are many helpful methods that can be used for this method:
-         *  - isNullValue() and setNullFlag() to check/change the null-bitmap
-         *  - deleteTupleDataRange() to remove part of a tuple's data
-         *
-         * You will have to examine the column's type as well; you can use
-         * the schema.getColumnInfo(iCol) method to determine the column's
-         * type; schema.getColumnInfo(iCol).getType() to get the basic SQL
-         * data type.  If the column is a variable-size column (e.g. VARCHAR)
-         * then you may need to retrieve details from the column itself using
-         * the dbPage member, and the getStorageSize() field.
-         *
-         * Finally, the valueOffsets array is extremely important, because it
-         * contains the starting offset of every non-NULL column's data in the
-         * tuple.  Setting a column's value to NULL will obviously affect at
-         * least some of the value-offsets.  Make sure to update this array
-         * properly as well.  (Note that columns whose value is NULL will have
-         * the special NULL_OFFSET constant as their offset in the tuple.)
-         */
     	// If the null value is already true, we return
     	if (isNullValue(iCol))
     		return;
@@ -553,32 +532,7 @@ public abstract class PageTuple implements Tuple {
     private void setNonNullColumnValue(int colIndex, Object value) {
         if (value == null)
             throw new IllegalArgumentException("value cannot be null");
-
-        /* 
-         * This time, the column's flag in the tuple's null-bitmap must be set
-         * to false (if it was true before).
-         *
-         * The trick is to figure out the size of the old column-value, and
-         * the size of the new column-value, so that the right amount of space
-         * can be made available for the new value.  If the column is a fixed-
-         * size type (e.g. an INTEGER) then this is easy, but if the column is
-         * a variable-size type (e.g. VARCHAR) then this will be more
-         * involved.  As before, retrieving the column's type will be important
-         * in implementing the method:  schema.getColumnInfo(iCol), and then
-         * schema.getColumnInfo(iCol).getType() to get the basic type info.
-         * You can use the getColumnValueSize() method to determine the size
-         * of a value as well.
-         *
-         * As before, the valueOffsets array is extremely important to use and
-         * modify correctly, so take care in how you manage it.
-         *
-         * The tuple's data in the page starts at the offset returned by the
-         * getDataStartOffset() method; this is the offset past the tuple's
-         * null-bitmask.
-         *
-         * Finally, once you have made space for the new column value, you can
-         * write the value itself using the writeNonNullValue() method.
-         */     
+ 
         // We obtain our column type
     	ColumnType colIndexType = schema.getColumnInfo(colIndex).getType();
 
@@ -603,25 +557,6 @@ public abstract class PageTuple implements Tuple {
         	pageOffset -= requiredSpace;
         	// We update our offset values
         	computeValueOffsets();
-        	// TODO:MAKE SURE THIS IS CORRECT
-        	
-        	// We update our value offsets
-        	// computeValueOffsets();
-        	/*
-        	// We recompute our offsets
-        	// valueOffsets[colIndex] = valueOffsets[colIndex] - requiredSpace;
-        	valueOffsets[colIndex] = valOffset;
-        	// computeValueOffsets();
-            int numCols = schema.numColumns();
-            for (int iCol = colIndex; iCol < numCols; iCol++) {
-                if (!getNullFlag(iCol)) {
-                    // This column is not NULL.  Store the current offset, then
-                    // move forward past this value's bytes.
-                    valueOffsets[iCol] = valueOffsets[iCol] - requiredSpace;
-                }
-            }
-            endOffset = endOffset - requiredSpace;
-            */
         }
         // Otherwise, if we have a VARCHAR and not a NULL value...
         else if (colIndexType.getBaseType() == SQLDataType.VARCHAR) {
@@ -639,24 +574,6 @@ public abstract class PageTuple implements Tuple {
             	pageOffset -= difference;
             	// We update our offset values
             	computeValueOffsets();
-        		// TODO: MAKE THIS CORRECT
-        		
-        		
-            	// We update our value offsets
-            	//computeValueOffsets();
-        		/*
-        		// valueOffsets[colIndex] = valueOffsets[colIndex] - difference;
-                int numCols = schema.numColumns();
-                for (int iCol = colIndex; iCol < numCols; iCol++) {
-                    if (!getNullFlag(iCol)) {
-                        // This column is not NULL.  Store the current offset, then
-                        // move forward past this value's bytes.
-                        valueOffsets[iCol] = valueOffsets[iCol] - difference;
-                    }
-                }
-                endOffset = endOffset - difference;
-                */
-
         	}
         	// If we need less space than we have...
         	else if (difference < 0) {
@@ -666,25 +583,6 @@ public abstract class PageTuple implements Tuple {
             	pageOffset += (0 - difference);
             	// We update our offset values
             	computeValueOffsets();
-        		// TODO: MAKE THIS CORRECT
-        		
-            	// We update our value offsets
-            	//computeValueOffsets();
-            	/*
-            	
-        		// valueOffsets[colIndex] = valueOffsets[colIndex] + difference;
-                int numCols = schema.numColumns();
-                for (int iCol = colIndex; iCol < numCols; iCol++) {
-                    if (!getNullFlag(iCol)) {
-                        // This column is not NULL.  Store the current offset, then
-                        // move forward past this value's bytes.
-                        valueOffsets[iCol] = valueOffsets[iCol] + difference;
-                    }
-                }
-                endOffset = endOffset + difference;
-                
-            	// We update our page offset
-            	pageOffset += difference;*/
         	}
         }
         // We finally write our value (don't need to do anything else)
