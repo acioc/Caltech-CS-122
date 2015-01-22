@@ -507,9 +507,6 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
-    	// We check our column value
-    	checkColumnIndex(iCol);
-    	
     	// If the null value is already true, we return
     	if (isNullValue(iCol))
     		return;
@@ -521,23 +518,23 @@ public abstract class PageTuple implements Tuple {
     	// We first find the tuple's type
     	ColumnType iColColumnType = schema.getColumnInfo(iCol).getType();
     	// We then obtain its length if it is a VARCHAR
-    	int iColLength;
     	int varcharLength = 0;
     	if (iColColumnType.getBaseType() == SQLDataType.VARCHAR) {
-    		Object iColValue = getColumnValue(iCol);
-    		String dataValue = TypeConverter.getStringValue(iColValue);
-    		varcharLength = dataValue.length();
+    		// Object iColValue = getColumnValue(iCol);
+    		// String dataValue = TypeConverter.getStringValue(iColValue);
+    		// varcharLength = dataValue.length();
+    		varcharLength = getColumnValueSize(iColColumnType, valueOffsets[iCol]);
     	}
     	// We obtain our storage size
-    	iColLength = getStorageSize(iColColumnType, varcharLength);
+    	int iColLength = getStorageSize(iColColumnType, varcharLength);
 
-    	// We obtain our offset
-    	int iColOffset = valueOffsets[iCol];
-    	
     	// We delete the tuple range
-    	deleteTupleDataRange(iColOffset, iColLength);
+    	deleteTupleDataRange(valueOffsets[iCol], iColLength);
     	
-    	// We update our valueOffset
+    	// We update our page offset
+    	pageOffset += iColLength;
+    	
+    	// We update our offset value
     	computeValueOffsets();
     }
 
@@ -581,15 +578,119 @@ public abstract class PageTuple implements Tuple {
          *
          * Finally, once you have made space for the new column value, you can
          * write the value itself using the writeNonNullValue() method.
-         */
-        
-    	// We check our column value
-    	// checkColumnIndex(colIndex);
+         */     
+        // We obtain our column type
+    	ColumnType colIndexType = schema.getColumnInfo(colIndex).getType();
 
-        
-        throw new UnsupportedOperationException("TODO:  Implement!");
+    	// If we will insert a VARCHAR, we find it's information here
+    	int newVarcharLength = 0;
+    	if (colIndexType.getBaseType() == SQLDataType.VARCHAR) {
+    		String newDataValue = TypeConverter.getStringValue(value);
+			newVarcharLength = newDataValue.length();
+    	}
+    	
+        // If our null flag was true, we must allocate space regardless of 
+    	// our type
+        if (isNullValue(colIndex)) {
+        	// We set the flag to false
+        	setNullFlag(colIndex, false);
+        	// We obtain our new value size
+        	int requiredSpace = getStorageSize(colIndexType, newVarcharLength);
+        	// We add this space
+        	int valOffset = getDataStartOffset();
+        	insertTupleDataRange(valOffset, requiredSpace);
+        	// We update our page offset
+        	pageOffset -= requiredSpace;
+        	// We update our offset values
+        	computeValueOffsets();
+        	// TODO:MAKE SURE THIS IS CORRECT
+        	
+        	// We update our value offsets
+        	// computeValueOffsets();
+        	/*
+        	// We recompute our offsets
+        	// valueOffsets[colIndex] = valueOffsets[colIndex] - requiredSpace;
+        	valueOffsets[colIndex] = valOffset;
+        	// computeValueOffsets();
+            int numCols = schema.numColumns();
+            for (int iCol = colIndex; iCol < numCols; iCol++) {
+                if (!getNullFlag(iCol)) {
+                    // This column is not NULL.  Store the current offset, then
+                    // move forward past this value's bytes.
+                    valueOffsets[iCol] = valueOffsets[iCol] - requiredSpace;
+                }
+            }
+            endOffset = endOffset - requiredSpace;
+            */
+        }
+        // Otherwise, if we have a VARCHAR and not a NULL value...
+        else if (colIndexType.getBaseType() == SQLDataType.VARCHAR) {
+        	// We obtain our old tuple size and our new required space
+        	int oldTupleSize = getColumnValueSize(colIndexType, 
+        			valueOffsets[colIndex]);
+        	int requiredSpace = getStorageSize(colIndexType, newVarcharLength);
+        	// We find the difference between these values
+        	int difference = requiredSpace - oldTupleSize;
+        	// If we need more space than we have...
+        	if (difference > 0) {
+        		// We add this space
+        		insertTupleDataRange(valueOffsets[colIndex], difference);
+            	// We update our page offset
+            	pageOffset -= difference;
+            	// We update our offset values
+            	computeValueOffsets();
+        		// TODO: MAKE THIS CORRECT
+        		
+        		
+            	// We update our value offsets
+            	//computeValueOffsets();
+        		/*
+        		// valueOffsets[colIndex] = valueOffsets[colIndex] - difference;
+                int numCols = schema.numColumns();
+                for (int iCol = colIndex; iCol < numCols; iCol++) {
+                    if (!getNullFlag(iCol)) {
+                        // This column is not NULL.  Store the current offset, then
+                        // move forward past this value's bytes.
+                        valueOffsets[iCol] = valueOffsets[iCol] - difference;
+                    }
+                }
+                endOffset = endOffset - difference;
+                */
+
+        	}
+        	// If we need less space than we have...
+        	else if (difference < 0) {
+        		// We remove this space
+        		deleteTupleDataRange(valueOffsets[colIndex], 0 - difference);
+            	// We update our page offset
+            	pageOffset += (0 - difference);
+            	// We update our offset values
+            	computeValueOffsets();
+        		// TODO: MAKE THIS CORRECT
+        		
+            	// We update our value offsets
+            	//computeValueOffsets();
+            	/*
+            	
+        		// valueOffsets[colIndex] = valueOffsets[colIndex] + difference;
+                int numCols = schema.numColumns();
+                for (int iCol = colIndex; iCol < numCols; iCol++) {
+                    if (!getNullFlag(iCol)) {
+                        // This column is not NULL.  Store the current offset, then
+                        // move forward past this value's bytes.
+                        valueOffsets[iCol] = valueOffsets[iCol] + difference;
+                    }
+                }
+                endOffset = endOffset + difference;
+                
+            	// We update our page offset
+            	pageOffset += difference;*/
+        	}
+        }
+        // We finally write our value (don't need to do anything else)
+        // for non-NULL or non-VARCHAR value
+        writeNonNullValue(dbPage, valueOffsets[colIndex], colIndexType, value);	
     }
-
 
     /**
      * This method computes and returns the number of bytes that are used to
