@@ -487,8 +487,7 @@ public abstract class PageTuple implements Tuple {
      * @param iCol the index of the column to set to <tt>NULL</tt>
      */
     private void setNullColumnValue(int iCol) {
-        /* TODO:  Implement!
-         *
+        /*
          * The column's flag in the tuple's null-bitmap must be set to true.
          * Also, the data occupied by the column's value must be removed.
          * There are many helpful methods that can be used for this method:
@@ -509,7 +508,16 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+    	// If the null value is already true, we return
+    	if (isNullValue(iCol))
+    		return;
+    	// Otherwise, we begin by setting the null flag to true
+    	// setNullFlag(iCol, true);
+    	// We then delete the information in the tuple range
+    	// deleteTupleDataRange(offset, length);
+    	
+        // throw new UnsupportedOperationException("TODO:  Implement!");
+    	
     }
 
 

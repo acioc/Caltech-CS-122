@@ -600,6 +600,12 @@ public class DataPage {
         // We begin by clearing the space of the slot
         // We thus need to first get our slot value
         int slotOffsetValue = getSlotValue(dbPage, slot);
+        
+        // We check for the case where the slot is already empty
+        if (slotOffsetValue == EMPTY_SLOT)
+        	throw new IllegalArgumentException("The slot has already been "
+        			+ "deleted");
+        
         // We next get the length of our data
         int slotDataLength = getTupleLength(dbPage, slot);
         deleteTupleDataRange(dbPage, slotOffsetValue, slotDataLength);
@@ -610,7 +616,7 @@ public class DataPage {
         // Finally, we remove any slots that exist at the end of our slot list
         // We get our final slot value
         int finalSlotValue = getSlotValue(dbPage, numSlots - 1);
-        Boolean updateSlotNumber = false;
+        boolean updateSlotNumber = false;
         // While our last value is an EMPTY_SLOT...
         while (finalSlotValue == EMPTY_SLOT) {
             updateSlotNumber = true;
