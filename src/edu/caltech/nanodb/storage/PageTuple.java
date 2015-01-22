@@ -538,7 +538,7 @@ public abstract class PageTuple implements Tuple {
     	deleteTupleDataRange(iColOffset, iColLength);
     	
     	// We update our valueOffset
-    	valueOffsets[iCol] = NULL_OFFSET;
+    	computeValueOffsets();
     }
 
 
@@ -557,8 +557,7 @@ public abstract class PageTuple implements Tuple {
         if (value == null)
             throw new IllegalArgumentException("value cannot be null");
 
-        /* TODO:  Implement!
-         *
+        /* 
          * This time, the column's flag in the tuple's null-bitmap must be set
          * to false (if it was true before).
          *
@@ -583,6 +582,11 @@ public abstract class PageTuple implements Tuple {
          * Finally, once you have made space for the new column value, you can
          * write the value itself using the writeNonNullValue() method.
          */
+        
+    	// We check our column value
+    	// checkColumnIndex(colIndex);
+
+        
         throw new UnsupportedOperationException("TODO:  Implement!");
     }
 
