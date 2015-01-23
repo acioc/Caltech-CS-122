@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="noUpdateChecks">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/findbugs-3.0.0/plugin/noUpdateChecks.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
