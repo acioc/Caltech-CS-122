@@ -496,16 +496,10 @@ public abstract class PageTuple implements Tuple {
     	// We then delete the information in the tuple range
     	// We first find the tuple's type
     	ColumnType iColColumnType = schema.getColumnInfo(iCol).getType();
-    	// We then obtain its length if it is a VARCHAR
-    	int varcharLength = 0;
-    	if (iColColumnType.getBaseType() == SQLDataType.VARCHAR) {
-    		// Object iColValue = getColumnValue(iCol);
-    		// String dataValue = TypeConverter.getStringValue(iColValue);
-    		// varcharLength = dataValue.length();
-    		varcharLength = getColumnValueSize(iColColumnType, valueOffsets[iCol]);
-    	}
-    	// We obtain our storage size
-    	int iColLength = getStorageSize(iColColumnType, varcharLength);
+    	
+    	// We then obtain its length
+    	int iColLength = getColumnValueSize(iColColumnType, 
+    			valueOffsets[iCol]);
 
     	// We delete the tuple range
     	deleteTupleDataRange(valueOffsets[iCol], iColLength);
