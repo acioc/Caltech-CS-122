@@ -496,16 +496,10 @@ public abstract class PageTuple implements Tuple {
     	// We then delete the information in the tuple range
     	// We first find the tuple's type
     	ColumnType iColColumnType = schema.getColumnInfo(iCol).getType();
-    	// We then obtain its length if it is a VARCHAR
-    	int varcharLength = 0;
-    	if (iColColumnType.getBaseType() == SQLDataType.VARCHAR) {
-    		// Object iColValue = getColumnValue(iCol);
-    		// String dataValue = TypeConverter.getStringValue(iColValue);
-    		// varcharLength = dataValue.length();
-    		varcharLength = getColumnValueSize(iColColumnType, valueOffsets[iCol]);
-    	}
-    	// We obtain our storage size
-    	int iColLength = getStorageSize(iColColumnType, varcharLength);
+    	
+    	// We then obtain its length
+    	int iColLength = getColumnValueSize(iColColumnType, 
+    			valueOffsets[iCol]);
 
     	// We delete the tuple range
     	deleteTupleDataRange(valueOffsets[iCol], iColLength);
@@ -550,13 +544,22 @@ public abstract class PageTuple implements Tuple {
         	setNullFlag(colIndex, false);
         	// We obtain our new value size
         	int requiredSpace = getStorageSize(colIndexType, newVarcharLength);
-        	// We add this space
-        	int valOffset = getDataStartOffset();
-        	insertTupleDataRange(valOffset, requiredSpace);
+        	// We add this space (at the correct location)
+        	int offsetValue = endOffset;
+        	int numCols = schema.numColumns();
+        	// We iterate until our first non-NULL value, to add our space there
+            for (int iCol = colIndex + 1; iCol < numCols; iCol++) {
+                if (!getNullFlag(iCol)) {
+                	offsetValue = valueOffsets[iCol];
+                	break;
+                }
+            }
+        	// We insert our necessary space
+        	insertTupleDataRange(offsetValue, requiredSpace);
         	// We update our page offset
         	pageOffset -= requiredSpace;
         	// We update our offset values
-        	computeValueOffsets();
+        	computeValueOffsets();            
         }
         // Otherwise, if we have a VARCHAR and not a NULL value...
         else if (colIndexType.getBaseType() == SQLDataType.VARCHAR) {

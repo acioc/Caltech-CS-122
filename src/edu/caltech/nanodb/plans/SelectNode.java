@@ -92,7 +92,13 @@ public abstract class SelectNode extends PlanNode {
         // Continue to advance the current tuple until it is selected by the
         // predicate.
         do {
+            // creates a copy of the current tuple, then unpins it (if it exists)
+            // after the currentTuple variable is changed
+            Tuple temp = currentTuple;
             advanceCurrentTuple();
+            if(temp != null) {
+                temp.unpin();
+            }
 
             // If the last tuple in the file (or chain of nodes) did not satisfy the
             // predicate, then the selection process is over, so set the done flag and
@@ -101,6 +107,8 @@ public abstract class SelectNode extends PlanNode {
                 done = true;
                 return null;
             }
+            //pins the current tuple given that it exists
+            currentTuple.pin();
         }
         while (!isTupleSelected(currentTuple));
 

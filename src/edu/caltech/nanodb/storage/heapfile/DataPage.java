@@ -213,17 +213,55 @@ public class DataPage {
      * This static helper function returns the index of where tuple data
      * currently ends in the specified data page.  This value depends more on
      * the overall structure of the data page, and at present is simply the
-     * page-size.
+     * page-size minus 4. 4 bytes are allocated at the end of the page for the
+     * linked list indices.
      *
      * @param dbPage the data page to examine
      *
      * @return the index where the tuple data ends in this data page
      */
     public static int getTupleDataEnd(DBPage dbPage) {
-        return dbPage.getPageSize();
+        return dbPage.getPageSize() - 4;
     }
 
 
+    /**
+     * This static helper function returns the index of the
+     * next tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     * @return the linked list index
+     */
+    public static short getNextPage(DBPage dbPage) {
+        return dbPage.readShort(dbPage.getPageSize() - 4);
+    }
+
+    /**
+     * This static helper function returns the index of the
+     * previous tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     * @return the linked list index
+     */
+    public static short getLastPage(DBPage dbPage) {
+        return dbPage.readShort(dbPage.getPageSize() - 2);
+    }
+
+    /**
+     * This static helper function sets the index of the
+     * next tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     */
+    public static void setNextPage(DBPage dbPage, short val) {
+        dbPage.writeShort(dbPage.getPageSize() - 4, val);
+    }
+
+    /**
+     * This static helper function sets the index of the
+     * previous tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     */
+    public static void setLastPage(DBPage dbPage, short val) {
+        dbPage.writeShort(dbPage.getPageSize() - 2, val);
+    }
     /**
      * Returns the length of the tuple stored at the specified slot.  It is
      * invalid to use this method on an empty slot.
@@ -615,22 +653,17 @@ public class DataPage {
 
         // Finally, we remove any slots that exist at the end of our slot list
         // We get our final slot value
-        int finalSlotValue = getSlotValue(dbPage, numSlots - 1);
         boolean updateSlotNumber = false;
         // While our last value is an EMPTY_SLOT...
-        while (finalSlotValue == EMPTY_SLOT) {
+        while (getSlotValue(dbPage, numSlots - 1) == EMPTY_SLOT) {
             updateSlotNumber = true;
+            numSlots = numSlots - 1;
             // We break when we have 0 slots remaining
-            if ((numSlots - 1) == 0)
+            if (numSlots == 0)
                 break;
-            // Otherwise, we continue checking our last value
-            else {
-                numSlots = numSlots - 1;
-                finalSlotValue = getSlotValue(dbPage, numSlots - 1);
-            }
         }
         // If we had to update our slot number, we do so
         if (updateSlotNumber)
-            setNumSlots(dbPage, numSlots - 1);
+            setNumSlots(dbPage, numSlots);
     }
 }

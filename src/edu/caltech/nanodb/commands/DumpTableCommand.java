@@ -104,6 +104,8 @@ public class DumpTableCommand extends Command {
                     dumpOut.print(val);
             }
             dumpOut.println("]");
+            //unpins the tuple after use
+            tuple.unpin();
         }
 
         public void finish() {

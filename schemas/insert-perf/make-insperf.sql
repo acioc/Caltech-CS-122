@@ -5,4 +5,3 @@ CREATE TABLE insert_perf (
 );
 
 EXIT;
-
