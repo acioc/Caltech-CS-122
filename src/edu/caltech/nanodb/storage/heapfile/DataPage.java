@@ -632,22 +632,17 @@ public class DataPage {
 
         // Finally, we remove any slots that exist at the end of our slot list
         // We get our final slot value
-        int finalSlotValue = getSlotValue(dbPage, numSlots - 1);
         boolean updateSlotNumber = false;
         // While our last value is an EMPTY_SLOT...
-        while (finalSlotValue == EMPTY_SLOT) {
+        while (getSlotValue(dbPage, numSlots - 1) == EMPTY_SLOT) {
             updateSlotNumber = true;
+            numSlots = numSlots - 1;
             // We break when we have 0 slots remaining
-            if ((numSlots - 1) == 0)
+            if (numSlots == 0)
                 break;
-            // Otherwise, we continue checking our last value
-            else {
-                numSlots = numSlots - 1;
-                finalSlotValue = getSlotValue(dbPage, numSlots - 1);
-            }
         }
         // If we had to update our slot number, we do so
         if (updateSlotNumber)
-            setNumSlots(dbPage, numSlots - 1);
+            setNumSlots(dbPage, numSlots);
     }
 }

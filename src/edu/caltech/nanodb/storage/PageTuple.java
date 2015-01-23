@@ -544,13 +544,22 @@ public abstract class PageTuple implements Tuple {
         	setNullFlag(colIndex, false);
         	// We obtain our new value size
         	int requiredSpace = getStorageSize(colIndexType, newVarcharLength);
-        	// We add this space
-        	int valOffset = getDataStartOffset();
-        	insertTupleDataRange(valOffset, requiredSpace);
+        	// We add this space (at the correct location)
+        	int offsetValue = endOffset;
+        	int numCols = schema.numColumns();
+        	// We iterate until our first non-NULL value, to add our space there
+            for (int iCol = colIndex + 1; iCol < numCols; iCol++) {
+                if (!getNullFlag(iCol)) {
+                	offsetValue = valueOffsets[iCol];
+                	break;
+                }
+            }
+        	// We insert our necessary space
+        	insertTupleDataRange(offsetValue, requiredSpace);
         	// We update our page offset
         	pageOffset -= requiredSpace;
         	// We update our offset values
-        	computeValueOffsets();
+        	computeValueOffsets();            
         }
         // Otherwise, if we have a VARCHAR and not a NULL value...
         else if (colIndexType.getBaseType() == SQLDataType.VARCHAR) {
