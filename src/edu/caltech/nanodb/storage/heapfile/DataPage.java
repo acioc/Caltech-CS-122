@@ -225,19 +225,40 @@ public class DataPage {
     }
 
 
-
+    /**
+     * This static helper function returns the index of the
+     * next tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     * @return the linked list index
+     */
     public static short getNextPage(DBPage dbPage) {
         return dbPage.readShort(dbPage.getPageSize() - 4);
     }
 
+    /**
+     * This static helper function returns the index of the
+     * previous tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     * @return the linked list index
+     */
     public static short getLastPage(DBPage dbPage) {
         return dbPage.readShort(dbPage.getPageSize() - 2);
     }
 
+    /**
+     * This static helper function sets the index of the
+     * next tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     */
     public static void setNextPage(DBPage dbPage, short val) {
         dbPage.writeShort(dbPage.getPageSize() - 4, val);
     }
 
+    /**
+     * This static helper function sets the index of the
+     * previous tuple in the linked list for a given data page.
+     * @param dbPage the data page to examine
+     */
     public static void setLastPage(DBPage dbPage, short val) {
         dbPage.writeShort(dbPage.getPageSize() - 2, val);
     }

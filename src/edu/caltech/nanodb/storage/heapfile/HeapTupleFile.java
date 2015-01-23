@@ -280,29 +280,21 @@ public class HeapTupleFile implements TupleFile {
                 " is larger than page size " + dbFile.getPageSize() + ".");
         }
 
-        // Search for a page to put the tuple in.  If we hit the end of the
-        // data file, create a new page.
+
+        // Starting at the header page, we follow the linked lists of open blocks
+        // Checking if each block has enough space for our tuple
         DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
         short pageNo = DataPage.getNextPage(headerPage);
-        // short pageNo = headerPage.readShort(headerPage.getPageSize() - 4);
+
         DBPage dbPage = null;
         while (true) {
+            // if the page number equals 0, we've looped through our entire linked list
+            // without finding a block that can fit our tuple
+            // if this is the case we break out of the loop and create a new block
             if(pageNo == 0) break;
 
-            // Try to load the page without creating a new one.
-            try {
-                dbPage = storageManager.loadDBPage(dbFile, pageNo);
-            }
-            catch (EOFException eofe) {
-                // Couldn't load the current page, because it doesn't exist.
-                // Break out of the loop.
-                logger.debug("Reached end of data file without finding " +
-                             "space for new tuple.");
-                break;
-            }
-
+            dbPage = storageManager.loadDBPage(dbFile, pageNo);
             int freeSpace = DataPage.getFreeSpaceInPage(dbPage);
-
             logger.trace(String.format("Page %d has %d bytes of free space.",
                          pageNo, freeSpace));
 
@@ -319,27 +311,22 @@ public class HeapTupleFile implements TupleFile {
             pageNo = DataPage.getNextPage(dbPage);
         }
 
-        // we've looped around to the start, so we need to create a new page
+        // we've looped around to the start of the list, so we need to create a new page
         if(pageNo == 0) {
             pageNo = (short) dbFile.getNumPages();
             logger.debug("Creating new page " + pageNo + " to store new tuple.");
             dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
             DataPage.initNewPage(dbPage);
-            DataPage.setNextPage(dbPage, DataPage.getNextPage(headerPage));
+
+            // puts the new page at the beginning of the linked list
+            short headerNextIndex = DataPage.getNextPage(headerPage);
+            DBPage oldNextPage = storageManager.loadDBPage(dbFile, headerNextIndex
+            );
+            DataPage.setNextPage(dbPage, headerNextIndex);
             DataPage.setLastPage(dbPage, (short) 0);
             DataPage.setNextPage(headerPage, pageNo);
+            DataPage.setLastPage(oldNextPage, pageNo);
         }
-
-        /*
-        if (dbPage == null) {
-            // Try to create a new page at the end of the file.  In this
-            // circumstance, pageNo is *just past* the last page in the data
-            // file.
-            logger.debug("Creating new page " + pageNo + " to store new tuple.");
-            dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
-            DataPage.initNewPage(dbPage);
-        }
-        */
 
         int slot = DataPage.allocNewTuple(dbPage, tupSize);
         int tupOffset = DataPage.getSlotValue(dbPage, slot);
@@ -352,6 +339,9 @@ public class HeapTupleFile implements TupleFile {
 
         DataPage.sanityCheck(dbPage);
 
+        // Check if adding the tuple causes the page to not have enough free space
+        // If the page is too full, remove it from the linked list and update
+        // the surrounding pointers accordingly
         if(DataPage.getFreeSpaceInPage(dbPage) < tupSize) {
             short nextIndex = DataPage.getNextPage(dbPage);
             short lastIndex = DataPage.getLastPage(dbPage);
@@ -363,8 +353,10 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(dbPage, (short) -1);
             DataPage.setNextPage(dbPage, (short) -1);
+            prevPage.unpin();
+            nextPage.unpin();
         }
-
+        dbPage.unpin();
         return pageTup;
     }
 
@@ -381,6 +373,7 @@ public class HeapTupleFile implements TupleFile {
     public void updateTuple(Tuple tup, Map<String, Object> newValues)
         throws IOException {
 
+        int tupSize = PageTuple.getTupleStorageSize(schema, tup);
         if (!(tup instanceof HeapFilePageTuple)) {
             throw new IllegalArgumentException(
                 "Tuple must be of type HeapFilePageTuple; got " + tup.getClass());
@@ -398,7 +391,45 @@ public class HeapTupleFile implements TupleFile {
         DBPage dbPage = ptup.getDBPage();
         DataPage.sanityCheck(dbPage);
 
+        short currentNext = DataPage.getNextPage(dbPage);
+        short currentLast = DataPage.getLastPage(dbPage);
 
+        // Check if updating the tuple causes the page to not have enough free space
+        // If the page is too full, remove it from the linked list and update
+        // the surrounding pointers accordingly
+
+        if(DataPage.getFreeSpaceInPage(dbPage) < tupSize
+                && currentNext != -1 && currentLast != -1) {
+            short nextIndex = DataPage.getNextPage(dbPage);
+            short lastIndex = DataPage.getLastPage(dbPage);
+            DBPage prevPage = storageManager.loadDBPage(dbFile, (int) lastIndex);
+            DBPage nextPage = storageManager.loadDBPage(dbFile, (int) nextIndex);
+
+            DataPage.setNextPage(prevPage, nextIndex);
+            DataPage.setLastPage(nextPage, lastIndex);
+
+            DataPage.setLastPage(dbPage, (short) -1);
+            DataPage.setNextPage(dbPage, (short) -1);
+            prevPage.unpin();
+            nextPage.unpin();
+        }
+
+        if(DataPage.getFreeSpaceInPage(dbPage) > tupSize
+            && currentNext == -1 && currentLast == -1) {
+            // we add the page to the beginning of the list, updating the surrounding
+            // pointers according
+            DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+            short headerNext = DataPage.getNextPage(headerPage);
+            DBPage oldNextPage = storageManager.loadDBPage(dbFile, headerNext);
+            DataPage.setNextPage(dbPage, headerNext);
+            DataPage.setLastPage(dbPage, (short) 0);
+
+            DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
+            DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
+            headerPage.unpin();
+            oldNextPage.unpin();
+        }
+        dbPage.unpin();
     }
 
 
@@ -417,12 +448,17 @@ public class HeapTupleFile implements TupleFile {
 
         DataPage.sanityCheck(dbPage);
 
+        // if the page we just deleted our tuple from was not in the list
+        // it probably has enough space to be in the list again
+        // so we put it back into the list
+        // pages not in the list have pointers (-1, -1)
+        // so that's what we check for
         short currentNext = DataPage.getNextPage(dbPage);
         short currentLast = DataPage.getLastPage(dbPage);
-        System.out.println("CURRENT NEXT" + currentNext);
-        System.out.println("CURRENT LAST" + currentLast);
+
         if(currentNext == -1 && currentLast == -1) {
-            System.out.println("PUTTING PAGE BACK IN");
+            // we add the page to the beginning of the list, updating the surrounding
+            // pointers according
             DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
             short headerNext = DataPage.getNextPage(headerPage);
             DBPage oldNextPage = storageManager.loadDBPage(dbFile, headerNext);
@@ -431,9 +467,10 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
             DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
+            headerPage.unpin();
+            oldNextPage.unpin();
         }
-
-
+        dbPage.unpin();
     }
 
     @Override
