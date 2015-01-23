@@ -21,6 +21,8 @@ import edu.caltech.nanodb.storage.InvalidFilePointerException;
 import edu.caltech.nanodb.storage.PageTuple;
 import edu.caltech.nanodb.storage.StorageManager;
 
+import javax.xml.crypto.Data;
+
 
 /**
  * This class implements the TupleFile interface for heap files.
@@ -280,9 +282,13 @@ public class HeapTupleFile implements TupleFile {
 
         // Search for a page to put the tuple in.  If we hit the end of the
         // data file, create a new page.
-        int pageNo = 1;
+        DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+        short pageNo = DataPage.getNextPage(headerPage);
+        // short pageNo = headerPage.readShort(headerPage.getPageSize() - 4);
         DBPage dbPage = null;
         while (true) {
+            if(pageNo == 0) break;
+
             // Try to load the page without creating a new one.
             try {
                 dbPage = storageManager.loadDBPage(dbFile, pageNo);
@@ -310,11 +316,21 @@ public class HeapTupleFile implements TupleFile {
 
             // If we reached this point then the page doesn't have enough
             // space, so go on to the next data page.
-            dbPage.unpin();
-            dbPage = null;
-            pageNo++;
+            pageNo = DataPage.getNextPage(dbPage);
         }
 
+        // we've looped around to the start, so we need to create a new page
+        if(pageNo == 0) {
+            pageNo = (short) dbFile.getNumPages();
+            logger.debug("Creating new page " + pageNo + " to store new tuple.");
+            dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
+            DataPage.initNewPage(dbPage);
+            DataPage.setNextPage(dbPage, DataPage.getNextPage(headerPage));
+            DataPage.setLastPage(dbPage, (short) 0);
+            DataPage.setNextPage(headerPage, pageNo);
+        }
+
+        /*
         if (dbPage == null) {
             // Try to create a new page at the end of the file.  In this
             // circumstance, pageNo is *just past* the last page in the data
@@ -323,6 +339,7 @@ public class HeapTupleFile implements TupleFile {
             dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
             DataPage.initNewPage(dbPage);
         }
+        */
 
         int slot = DataPage.allocNewTuple(dbPage, tupSize);
         int tupOffset = DataPage.getSlotValue(dbPage, slot);
@@ -334,6 +351,19 @@ public class HeapTupleFile implements TupleFile {
             HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
 
         DataPage.sanityCheck(dbPage);
+
+        if(DataPage.getFreeSpaceInPage(dbPage) < tupSize) {
+            short nextIndex = DataPage.getNextPage(dbPage);
+            short lastIndex = DataPage.getLastPage(dbPage);
+            DBPage prevPage = storageManager.loadDBPage(dbFile, (int) lastIndex);
+            DBPage nextPage = storageManager.loadDBPage(dbFile, (int) nextIndex);
+
+            DataPage.setNextPage(prevPage, nextIndex);
+            DataPage.setLastPage(nextPage, lastIndex);
+
+            DataPage.setLastPage(dbPage, (short) -1);
+            DataPage.setLastPage(dbPage, (short) -1);
+        }
 
         return pageTup;
     }
@@ -367,6 +397,8 @@ public class HeapTupleFile implements TupleFile {
 
         DBPage dbPage = ptup.getDBPage();
         DataPage.sanityCheck(dbPage);
+
+
     }
 
 
@@ -384,6 +416,20 @@ public class HeapTupleFile implements TupleFile {
         DataPage.deleteTuple(dbPage, ptup.getSlot());
 
         DataPage.sanityCheck(dbPage);
+        int tupSize = PageTuple.getTupleStorageSize(schema, tup);
+        short currentNext = DataPage.getNextPage(dbPage);
+        short currentLast = DataPage.getLastPage(dbPage);
+
+        if(currentNext == -1 && currentLast == -1 && DataPage.getFreeSpaceInPage(dbPage) > tupSize) {
+            DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+            short headerNext = DataPage.getNextPage(headerPage);
+            DBPage oldNextPage = storageManager.loadDBPage(dbFile, headerNext);
+            DataPage.setNextPage(dbPage, headerNext);
+            DataPage.setLastPage(dbPage, (short) 0);
+
+            DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
+            DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
+        }
     }
 
     @Override

@@ -213,17 +213,34 @@ public class DataPage {
      * This static helper function returns the index of where tuple data
      * currently ends in the specified data page.  This value depends more on
      * the overall structure of the data page, and at present is simply the
-     * page-size.
+     * page-size minus 4. 4 bytes are allocated at the end of the page for the
+     * linked list indices.
      *
      * @param dbPage the data page to examine
      *
      * @return the index where the tuple data ends in this data page
      */
     public static int getTupleDataEnd(DBPage dbPage) {
-        return dbPage.getPageSize();
+        return dbPage.getPageSize() - 4;
     }
 
 
+
+    public static short getNextPage(DBPage dbPage) {
+        return dbPage.readShort(dbPage.getPageSize() - 4);
+    }
+
+    public static short getLastPage(DBPage dbPage) {
+        return dbPage.readShort(dbPage.getPageSize() - 2);
+    }
+
+    public static void setNextPage(DBPage dbPage, short val) {
+        dbPage.writeShort(dbPage.getPageSize() - 4, val);
+    }
+
+    public static void setLastPage(DBPage dbPage, short val) {
+        dbPage.writeShort(dbPage.getPageSize() - 2, val);
+    }
     /**
      * Returns the length of the tuple stored at the specified slot.  It is
      * invalid to use this method on an empty slot.
