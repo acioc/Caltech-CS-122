@@ -362,7 +362,7 @@ public class HeapTupleFile implements TupleFile {
             DataPage.setLastPage(nextPage, lastIndex);
 
             DataPage.setLastPage(dbPage, (short) -1);
-            DataPage.setLastPage(dbPage, (short) -1);
+            DataPage.setNextPage(dbPage, (short) -1);
         }
 
         return pageTup;
@@ -416,11 +416,13 @@ public class HeapTupleFile implements TupleFile {
         DataPage.deleteTuple(dbPage, ptup.getSlot());
 
         DataPage.sanityCheck(dbPage);
-        int tupSize = PageTuple.getTupleStorageSize(schema, tup);
+
         short currentNext = DataPage.getNextPage(dbPage);
         short currentLast = DataPage.getLastPage(dbPage);
-
-        if(currentNext == -1 && currentLast == -1 && DataPage.getFreeSpaceInPage(dbPage) > tupSize) {
+        System.out.println("CURRENT NEXT" + currentNext);
+        System.out.println("CURRENT LAST" + currentLast);
+        if(currentNext == -1 && currentLast == -1) {
+            System.out.println("PUTTING PAGE BACK IN");
             DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
             short headerNext = DataPage.getNextPage(headerPage);
             DBPage oldNextPage = storageManager.loadDBPage(dbFile, headerNext);
@@ -430,6 +432,8 @@ public class HeapTupleFile implements TupleFile {
             DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
             DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
         }
+
+
     }
 
     @Override
