@@ -320,14 +320,18 @@ public class HeapTupleFile implements TupleFile {
             }
 
             // If we reached this point then the page doesn't have enough
-            // space, so go on to the next data page.
+            // space, so unpin and go on to the next data page.
             pageNo = DataPage.getNextPage(dbPage);
+            dbPage.unpin();
         }
 
         // we've looped around to the start of the list, so we need to create a new page
         if(pageNo == 0) {
             pageNo = (short) dbFile.getNumPages();
             logger.debug("Creating new page " + pageNo + " to store new tuple.");
+            if(dbPage != null){
+                dbPage.unpin();
+            }
             dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
             DataPage.initNewPage(dbPage);
 
@@ -339,6 +343,9 @@ public class HeapTupleFile implements TupleFile {
             DataPage.setLastPage(dbPage, (short) 0);
             DataPage.setNextPage(headerPage, pageNo);
             DataPage.setLastPage(oldNextPage, pageNo);
+            // after references are fixed, unpin surrounding pages
+            oldNextPage.unpin();
+            headerPage.unpin();
         }
 
         int slot = DataPage.allocNewTuple(dbPage, tupSize);
@@ -369,7 +376,7 @@ public class HeapTupleFile implements TupleFile {
             prevPage.unpin();
             nextPage.unpin();
         }
-
+        pageTup.unpin();
         dbPage.unpin();
         return pageTup;
     }
@@ -486,7 +493,6 @@ public class HeapTupleFile implements TupleFile {
             headerPage.unpin();
             oldNextPage.unpin();
         }
-
         dbPage.unpin();
     }
 
