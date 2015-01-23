@@ -111,6 +111,9 @@ public class HeapTupleFile implements TupleFile {
                     if (offset == DataPage.EMPTY_SLOT)
                         continue;
 
+                    //unpins the page once the tuple has been found
+                    dbPage.unpin();
+
                     // This is the first tuple in the file.  Build up the
                     // HeapFilePageTuple object and return it.
                     return new HeapFilePageTuple(schema, dbPage, iSlot, offset);
@@ -172,6 +175,8 @@ public class HeapTupleFile implements TupleFile {
             throw new InvalidFilePointerException("Slot " + slot +
                 " on page " + fptr.getPageNo() + " is empty.");
         }
+        //unpins the page once the tuple location has been identified
+        dbPage.unpin();
 
         return new HeapFilePageTuple(schema, dbPage, slot, offset);
     }
@@ -200,6 +205,8 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
 
         DBPage dbPage = ptup.getDBPage();
+        // pins the page the tuple is one (as the getDBPage does not pin it)
+        dbPage.pin();
         DBFile dbFile = dbPage.getDBFile();
 
         int nextSlot = ptup.getSlot() + 1;
@@ -209,6 +216,8 @@ public class HeapTupleFile implements TupleFile {
             while (nextSlot < numSlots) {
                 int nextOffset = DataPage.getSlotValue(dbPage, nextSlot);
                 if (nextOffset != DataPage.EMPTY_SLOT) {
+                    //when the next tuple's location has been found, unpin the page
+                    dbPage.unpin();
                     return new HeapFilePageTuple(schema, dbPage, nextSlot,
                                                  nextOffset);
                 }
@@ -231,10 +240,14 @@ public class HeapTupleFile implements TupleFile {
             catch (EOFException e) {
                 // Hit the end of the file with no more tuples.  We are done
                 // scanning.
+                //unpins the current page if it exists.  If the loop went
+                //past the end of the pages, does nothing
+                if(dbPage!=null){
+                    dbPage.unpin();
+                }
                 return null;
             }
         }
-
         // It's pretty gross to have no return statement here, but there's
         // no way to reach this point.
     }
@@ -334,7 +347,10 @@ public class HeapTupleFile implements TupleFile {
             HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
 
         DataPage.sanityCheck(dbPage);
-
+        // once the tuple has been added, it along with its page (which was independently
+        // pinned and thus requires its own line) are unpinned
+        pageTup.unpin();
+        dbPage.unpin();
         return pageTup;
     }
 
@@ -381,9 +397,13 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
 
         DBPage dbPage = ptup.getDBPage();
+        // calling ptup.getDBPage doesn't pin the page, so must be done now
+        dbPage.pin();
         DataPage.deleteTuple(dbPage, ptup.getSlot());
 
         DataPage.sanityCheck(dbPage);
+        // page is unpinned after the tuple is deleted
+        dbPage.unpin();
     }
 
     @Override
