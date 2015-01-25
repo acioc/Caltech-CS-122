@@ -34,7 +34,7 @@ public class PropertyRegistry {
     }
 
 
-    public HashMap<String, PropertyHandler> properties =
+    private HashMap<String, PropertyHandler> properties =
         new HashMap<String, PropertyHandler>();
 
 

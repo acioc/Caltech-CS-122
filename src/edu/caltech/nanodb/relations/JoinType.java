@@ -7,7 +7,7 @@ public enum JoinType {
     /** Inner joins, where only matching rows are included in the result. */
     INNER,
 
-    
+
     /**
      * Left outer joins, where non-matching rows from the left table are
      * included in the results.
@@ -30,5 +30,19 @@ public enum JoinType {
 
 
     /** Cross joins, which are simply a Cartesian product. */
-    CROSS
+    CROSS,
+
+
+    /**
+     * Semijoin, where the left table's rows are included when they match
+     * one or more rows from the right table.
+     */
+    SEMIJOIN,
+
+
+    /**
+     * Antijoin (aka anti-semijoin), where the left table's rows are included
+     * when they match none of the rows from the right table.
+     */
+    ANTIJOIN
 }
