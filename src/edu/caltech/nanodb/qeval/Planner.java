@@ -47,8 +47,10 @@ public interface Planner {
      *        is a nested subquery.  This is allowed to be an empty list, or
      *        {@code null}, if the query is a top-level query.  If
      *        {@code selClause} is a nested subquery, {@code enclosingSelects[0]}
-     *        is the most immediately enclosing query, then {@code enclosingSelects[1]}
-     *        encloses {@code enclosingSelects[0]}, and so forth.
+     *        is the outermost enclosing query, then {@code enclosingSelects[1]}
+     *        is enclosed by {@code enclosingSelects[0]}, and so forth.  The
+     *        most tightly enclosing query is the last one in
+     *        {@code enclosingSelects}.
      *
      * @return a plan tree for executing the specified query
      *
@@ -77,8 +79,10 @@ public interface Planner {
      *        is a nested subquery.  This is allowed to be an empty list, or
      *        {@code null}, if the query is a top-level query.  If
      *        {@code selClause} is a nested subquery, {@code enclosingSelects[0]}
-     *        is the most immediately enclosing query, then {@code enclosingSelects[1]}
-     *        encloses {@code enclosingSelects[0]}, and so forth.
+     *        is the outermost enclosing query, then {@code enclosingSelects[1]}
+     *        is enclosed by {@code enclosingSelects[0]}, and so forth.  The
+     *        most tightly enclosing query is the last one in
+     *        {@code enclosingSelects}.
      *
      * @return a plan tree for executing the select operation
      *
