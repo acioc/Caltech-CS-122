@@ -9,12 +9,15 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.Expression;
+import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.plans.FileScanNode;
 import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
 import edu.caltech.nanodb.plans.ProjectNode;
 import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.plans.SimpleFilterNode;
+import edu.caltech.nanodb.plans.SortNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
@@ -55,7 +58,6 @@ public class SimplePlanner implements Planner {
     @Override
     public PlanNode makePlan(SelectClause selClause,
         List<SelectClause> enclosingSelects) throws IOException {
-        // TODO:  Implement!
 
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
@@ -114,11 +116,25 @@ public class SimplePlanner implements Planner {
         	finalPlan.prepare();
         	return finalPlan;
         }
-        
-        // TODO: Handle predicates
+                
+        // We handle non-trivial projects 
         if (!selClause.isTrivialProject()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  project!");
+        	// We use a project from our current finalPlan
+            finalPlan = new ProjectNode(
+            		finalPlan, 
+            		selClause.getSelectValues());     
+        }
+
+        Expression whereExpr = selClause.getWhereExpr();
+        // We handle a simple select
+        if (whereExpr != null) {
+            finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
+        }
+
+        // We deal with our order by expressions
+        List<OrderByExpression> orderByExprs = selClause.getOrderByExprs();
+        if (!orderByExprs.isEmpty()) {
+        	finalPlan = new SortNode(finalPlan, orderByExprs);
         }
         
         // We return our plan
