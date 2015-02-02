@@ -101,7 +101,7 @@ public class SimplePlanner implements Planner {
 	        	// We can currently throw an exception for this last case
 	        	default:
 	        		throw new UnsupportedOperationException(
-	        				"FROM not supported");
+	        				"Given FROM clause not supported");
         	}
         	// We rename if necessary
         	if (fromClause.isRenamed()) {
