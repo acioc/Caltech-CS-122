@@ -12,6 +12,7 @@ import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.plans.FileScanNode;
 import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.ProjectNode;
 import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.relations.JoinType;
@@ -108,10 +109,13 @@ public class SimplePlanner implements Planner {
         }
         // Otherwise, we have no from clause (I.E. "SELECT 3 + 2 AS five;")
         else {
-        	throw new UnsupportedOperationException("TODO");
+        	// We just project and return our plan
+        	finalPlan = new ProjectNode(selClause.getSelectValues());
+        	finalPlan.prepare();
+        	return finalPlan;
         }
-        // TODO: Handle predicates
         
+        // TODO: Handle predicates
         if (!selClause.isTrivialProject()) {
             throw new UnsupportedOperationException(
                 "Not yet implemented:  project!");
