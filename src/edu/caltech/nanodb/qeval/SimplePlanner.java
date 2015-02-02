@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
+import edu.caltech.nanodb.commands.FromClause.ClauseType;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.OrderByExpression;
@@ -69,47 +70,20 @@ public class SimplePlanner implements Planner {
         
         // We establish a plan node
         PlanNode finalPlan;
-        // If our from clause is not NULL, we handle the different cases
+        
+        // If our FROM clause is not NULL, we handle the different cases
+        // by using our helper function
         if (fromClause != null) {
-        	switch (fromClause.getClauseType()) {
-	        	// If we have a BASE_TABLE...
-	        	case BASE_TABLE:
-	        		// We have a simple select FROM clause
-	        		finalPlan = makeSimpleSelect(
-	        				fromClause.getTableName(), null, null);
-	        		break;
-	        		
-	        	// If we have a SELECT_SUBQUERY...
-	        	case SELECT_SUBQUERY:
-	        		// We call makePlan our select subquery 
-	        		finalPlan = makePlan(fromClause.getSelectClause(), null);
-	        		break;
-	        		
-	        	// If we have a JOIN_EXPR...	
-	        	case JOIN_EXPR:
-	        		// We get our child expressions
-	        		FromClause leftChild = fromClause.getLeftChild();
-	        		FromClause rightChild = fromClause.getRightChild();
-	        		// We create a new nested loop join node
-	        		finalPlan = new NestedLoopsJoinNode(
-	        				makePlan(leftChild.getSelectClause(), null),
-	        				makePlan(rightChild.getSelectClause(), null),
-	        				fromClause.getJoinType(), 
-	        				fromClause.getPreparedJoinExpr());
-	        		break;
-	        		
-	        	// We can currently throw an exception for this last case
-	        	default:
-	        		throw new UnsupportedOperationException(
-	        				"Given FROM clause not supported");
+        	finalPlan = fromClauseHelper(fromClause);
+    		// We rename if necessary
+        	// TODO: FIGURE OUT IF THIS IS BREAKING THE NATURAL JOIN
+        	if (fromClause.getClauseType() != ClauseType.JOIN_EXPR){
+	    		if (fromClause.isRenamed()) {
+	    			finalPlan = new RenameNode(
+	    					finalPlan, 
+	    					fromClause.getResultName());
+	    		}
         	}
-        	// We rename if necessary
-        	if (fromClause.isRenamed()) {
-        		finalPlan = new RenameNode(
-        				finalPlan, 
-        				fromClause.getResultName());
-        	}
-        	
         }
         // Otherwise, we have no from clause (I.E. "SELECT 3 + 2 AS five;")
         else {
@@ -144,7 +118,52 @@ public class SimplePlanner implements Planner {
         finalPlan.prepare();
         return finalPlan;
     }
-
+    
+    /**
+     * Acts as a helper function for dealing with the FROM clause of a query.
+     * 
+     * @param fromClause The FROM clause we are working with
+     * 
+     * @throws IOException if the switch does not handle the from clause type.
+     */
+    public PlanNode fromClauseHelper(FromClause fromClause) 
+    		throws IOException {
+    	
+    	PlanNode finalPlan;
+    	switch (fromClause.getClauseType()) {
+	    	// If we have a BASE_TABLE...
+	    	case BASE_TABLE:
+	    		// We have a simple select FROM clause
+	    		finalPlan = makeSimpleSelect(
+	    				fromClause.getTableName(), null, null);
+	    		break;
+	    		
+	    	// If we have a SELECT_SUBQUERY...
+	    	case SELECT_SUBQUERY:
+	    		// We call makePlan our select subquery 
+	    		finalPlan = makePlan(fromClause.getSelectClause(), null);
+	    		break;
+	    		
+	    	// If we have a JOIN_EXPR...	
+	    	case JOIN_EXPR:
+	    		// We get our child expressions
+	    		FromClause leftChild = fromClause.getLeftChild();
+	    		FromClause rightChild = fromClause.getRightChild();
+	    		// We create a new nested loop join node
+	    		finalPlan = new NestedLoopsJoinNode(
+	    				fromClauseHelper(leftChild),
+	    				fromClauseHelper(rightChild),
+	    				fromClause.getJoinType(), 
+	    				fromClause.getPreparedJoinExpr());
+	    		break;
+	    		
+	    	// We can currently throw an exception for this last case
+	    	default:
+	    		throw new UnsupportedOperationException(
+	    				"Given FROM clause not supported");
+    	}
+		return finalPlan;
+    }
 
     /**
      * Constructs a simple select plan that reads directly from a table, with
