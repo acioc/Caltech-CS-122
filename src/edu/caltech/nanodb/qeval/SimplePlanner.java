@@ -8,13 +8,13 @@ import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
-
 import edu.caltech.nanodb.expressions.Expression;
-
 import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
-
+import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -56,28 +56,70 @@ public class SimplePlanner implements Planner {
         List<SelectClause> enclosingSelects) throws IOException {
         // TODO:  Implement!
 
-        // For HW1, we have a very simple implementation that defers to
-        // makeSimpleSelect() to handle simple SELECT queries with one table,
-        // and an optional WHERE clause.
-
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
                 "Not yet implemented:  enclosing queries!");
         }
-
+        
+        // We start by working with our FROM clause
+        FromClause fromClause = selClause.getFromClause();
+        
+        // We establish a plan node
+        PlanNode finalPlan;
+        // If our from clause is not NULL, we handle the different cases
+        if (fromClause != null) {
+        	switch (fromClause.getClauseType()) {
+	        	// If we have a BASE_TABLE...
+	        	case BASE_TABLE:
+	        		// We have a simple select FROM clause
+	        		finalPlan = makeSimpleSelect(
+	        				fromClause.getTableName(), null, null);
+	        		break;
+	        		
+	        	// If we have a SELECT_SUBQUERY...
+	        	case SELECT_SUBQUERY:
+	        		// We call makePlan our select subquery 
+	        		finalPlan = makePlan(fromClause.getSelectClause(), null);
+	        		break;
+	        		
+	        	// If we have a JOIN_EXPR...	
+	        	case JOIN_EXPR:
+	        		// We get our child expressions
+	        		FromClause leftChild = fromClause.getLeftChild();
+	        		FromClause rightChild = fromClause.getRightChild();
+	        		// We create a new nested loop join node
+	        		finalPlan = new NestedLoopsJoinNode(
+	        				makePlan(leftChild.getSelectClause(), null),
+	        				makePlan(rightChild.getSelectClause(), null),
+	        				fromClause.getJoinType(), 
+	        				fromClause.getPreparedJoinExpr());
+	        		break;
+	        		
+	        	// We can currently throw an exception for this last case
+	        	default:
+	        		throw new UnsupportedOperationException(
+	        				"FROM not supported");
+        	}
+        	// We rename if necessary
+        	if (fromClause.isRenamed()) {
+        		finalPlan = new RenameNode(finalPlan, fromClause.getResultName());
+        	}
+        	
+        }
+        // Otherwise, we have no from clause (I.E. "SELECT 3 + 2 AS five;")
+        else {
+        	throw new UnsupportedOperationException("TODO");
+        }
+        // TODO: Handle predicates
+        
         if (!selClause.isTrivialProject()) {
             throw new UnsupportedOperationException(
                 "Not yet implemented:  project!");
         }
-
-        FromClause fromClause = selClause.getFromClause();
-        if (!fromClause.isBaseTable()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  joins or subqueries in FROM clause!");
-        }
-
-        return makeSimpleSelect(fromClause.getTableName(),
-            selClause.getWhereExpr(), null);
+        
+        // We return our plan
+        finalPlan.prepare();
+        return finalPlan;
     }
 
 
