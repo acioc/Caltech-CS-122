@@ -322,7 +322,6 @@ public class HeapTupleFile implements TupleFile {
             // If we reached this point then the page doesn't have enough
             // space, so unpin and go on to the next data page.
             pageNo = DataPage.getNextPage(dbPage);
-            dbPage.unpin();
         }
 
         // we've looped around to the start of the list, so we need to create a new page
