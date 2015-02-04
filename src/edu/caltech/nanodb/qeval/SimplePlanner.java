@@ -76,7 +76,6 @@ public class SimplePlanner implements Planner {
         if (fromClause != null) {
         	finalPlan = fromClauseHelper(fromClause);
     		// We rename if necessary
-        	// TODO: FIGURE OUT IF THIS IS BREAKING THE NATURAL JOIN
         	if (fromClause.getClauseType() != ClauseType.JOIN_EXPR){
 	    		if (fromClause.isRenamed()) {
 	    			finalPlan = new RenameNode(
@@ -155,6 +154,10 @@ public class SimplePlanner implements Planner {
 	    				fromClauseHelper(rightChild),
 	    				fromClause.getJoinType(), 
 	    				fromClause.getPreparedJoinExpr());
+	    		// We use a project node to avoid duplicate column names
+	    		finalPlan = new ProjectNode(
+	    				finalPlan, 
+	    				fromClause.getPreparedSelectValues());
 	    		break;
 	    		
 	    	// We can currently throw an exception for this last case
