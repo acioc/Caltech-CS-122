@@ -124,7 +124,6 @@ public class SimplePlanner implements Planner {
         if (whereExpr != null) {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
         }
-        // TODO: SEE IF WE NEED MORE WHERE CLAUSE STATEMENT RELATED THINGS
 
         // We deal with our order by expressions
         List<OrderByExpression> orderByExprs = selClause.getOrderByExprs();
