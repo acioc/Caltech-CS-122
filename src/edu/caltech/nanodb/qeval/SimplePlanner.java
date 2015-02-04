@@ -129,10 +129,9 @@ public class SimplePlanner implements Planner {
         }
         
         // We deal with our having expressions
-        // TODO: FIX THIS
         Expression haveExpr =  selClause.getHavingExpr();
         if (haveExpr != null) {
-        	finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
+        	//TODO: finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
         }
         
         // We deal with our order by expressions
