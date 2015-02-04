@@ -96,11 +96,9 @@ public class ProjectNode extends PlanNode {
             // Need to prepare the left child-node before we can do our own
             // work.
             leftChild.prepare();
-            System.out.println("prepared left child");
             // Use the helper function to prepare the schema of this
             // project-node, since it is a complicated operation.
             prepareSchemaStats(leftChild.getSchema(), leftChild.getStats());
-            System.out.println("prepare schema stats called succesfully");
             // Come up with a cost estimate now.  Projection does require some
             // computation, so increase the CPU cost based on the number of
             // tuples expected to come into this plan-node.
