@@ -199,11 +199,9 @@ public class HashedGroupAggregateNode extends GroupAggregateNode {
     public void prepare() {
         // Need to prepare the left child-node before we can do our own work.
         leftChild.prepare();
-
         // Use the helper function to prepare the schema of this grouping/aggregate
         // plan-node, since it is a complicated operation.
         prepareSchemaStats();
-
         // Grab the left child's cost, then update the cost based on the cost
         // of hashing and computing aggregates.
         PlanCost childCost = leftChild.getCost();
@@ -225,7 +223,6 @@ public class HashedGroupAggregateNode extends GroupAggregateNode {
             logger.info(
                 "Child's cost not available; not computing this node's cost.");
         }
-
         // TODO:  Estimate the final tuple-size.  It isn't hard, just tedious.
     }
 
