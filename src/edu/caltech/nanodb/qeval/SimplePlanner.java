@@ -128,6 +128,13 @@ public class SimplePlanner implements Planner {
             		selClause.getSelectValues());     
         }
         
+        // We deal with our having expressions
+        // TODO: FIX THIS
+        Expression haveExpr =  selClause.getHavingExpr();
+        if (haveExpr != null) {
+        	finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
+        }
+        
         // We deal with our order by expressions
         List<OrderByExpression> orderByExprs = selClause.getOrderByExprs();
         if (!orderByExprs.isEmpty()) {
