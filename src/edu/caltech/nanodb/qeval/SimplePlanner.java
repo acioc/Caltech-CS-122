@@ -4,6 +4,8 @@ package edu.caltech.nanodb.qeval;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.AggregateProcessor;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
@@ -19,6 +21,7 @@ import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.plans.SimpleFilterNode;
 import edu.caltech.nanodb.plans.SortNode;
+import edu.caltech.nanodb.plans.HashedGroupAggregateNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
@@ -64,13 +67,22 @@ public class SimplePlanner implements Planner {
             throw new UnsupportedOperationException(
                 "Not yet implemented:  enclosing queries!");
         }
-        
+
         // We start by working with our FROM clause
         FromClause fromClause = selClause.getFromClause();
         
         // We establish a plan node
         PlanNode finalPlan;
-        
+
+        AggregateProcessor processor = new AggregateProcessor();
+
+        for( SelectValue sv : selClause.getSelectValues()) {
+            if(!sv.isExpression()) continue;
+
+            Expression e = sv.getExpression().traverse(processor);
+            sv.setExpression(e);
+        }
+
         // If our FROM clause is not NULL, we handle the different cases
         // by using our helper function
         if (fromClause != null) {
@@ -92,14 +104,21 @@ public class SimplePlanner implements Planner {
         	finalPlan.prepare();
         	return finalPlan;
         }
-                
-        // We handle non-trivial projects 
+
+        if(processor.hasAggregate()) {
+            finalPlan = new HashedGroupAggregateNode(finalPlan, selClause.getGroupByExprs(), processor.getMap());
+        }
+
+        // We handle non-trivial projects
+
         if (!selClause.isTrivialProject()) {
         	// We use a project from our current finalPlan
             finalPlan = new ProjectNode(
             		finalPlan, 
             		selClause.getSelectValues());     
         }
+
+
 
         Expression whereExpr = selClause.getWhereExpr();
         // We handle a simple select
@@ -113,9 +132,11 @@ public class SimplePlanner implements Planner {
         if (!orderByExprs.isEmpty()) {
         	finalPlan = new SortNode(finalPlan, orderByExprs);
         }
-        
+        System.out.println("about to return plan");
+
         // We return our plan
         finalPlan.prepare();
+        System.out.println("prepared successfully");
         return finalPlan;
     }
     
