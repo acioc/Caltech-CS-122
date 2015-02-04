@@ -130,11 +130,9 @@ public class SimplePlanner implements Planner {
         if (!orderByExprs.isEmpty()) {
         	finalPlan = new SortNode(finalPlan, orderByExprs);
         }
-        System.out.println("about to return plan");
 
         // We return our plan
         finalPlan.prepare();
-        System.out.println("prepared successfully");
         return finalPlan;
     }
     

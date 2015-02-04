@@ -48,9 +48,6 @@ public class AggregateProcessor implements ExpressionProcessor {
                 aggregateCount += 1;
                 ColumnValue newNode = new ColumnValue(newName);
 
-                System.out.println("returning column value:");
-                System.out.println(newNode.toString());
-
                 return newNode;
             }
             else {
