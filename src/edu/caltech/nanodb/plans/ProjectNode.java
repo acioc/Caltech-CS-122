@@ -184,7 +184,7 @@ public class ProjectNode extends PlanNode {
                     ColumnValue colValue = (ColumnValue) expr;
                     int colIndex = inputSchema.getColumnIndex(colValue.getColumnName());
                     colInfo = inputSchema.getColumnInfo(colIndex);
-                    // stats.add(inputStats.get(colIndex));
+                    stats.add(inputStats.get(colIndex));
                 }
                 else {
                     // This is a more complicated expression.  Guess the schema,

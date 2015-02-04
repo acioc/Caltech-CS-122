@@ -74,6 +74,7 @@ public class SimplePlanner implements Planner {
         // We establish a plan node
         PlanNode finalPlan;
 
+        // We check if we have aggregates
         AggregateProcessor processor = new AggregateProcessor();
 
         for( SelectValue sv : selClause.getSelectValues()) {
@@ -104,27 +105,29 @@ public class SimplePlanner implements Planner {
         	return finalPlan;
         }
 
-        if(processor.hasAggregate()) {
-            finalPlan = new HashedGroupAggregateNode(finalPlan, selClause.getGroupByExprs(), processor.getMap());
-        }
-
-        // We handle non-trivial projects
-
-        if (!selClause.isTrivialProject()) {
-        	// We use a project from our current finalPlan
-            finalPlan = new ProjectNode(
-            		finalPlan, 
-            		selClause.getSelectValues());     
-        }
-
-
-
         Expression whereExpr = selClause.getWhereExpr();
         // We handle a simple select
         if (whereExpr != null) {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
         }
 
+        // We handle our grouping and aggregation
+        List<Expression> groupExp = selClause.getGroupByExprs();
+        if(processor.hasAggregate() || !groupExp.isEmpty()) {
+            finalPlan = new HashedGroupAggregateNode(
+            		finalPlan,
+            		groupExp, 
+            		processor.getMap());
+        }
+        
+        // We handle non-trivial projects
+        if (!selClause.isTrivialProject()) {
+        	// We use a project from our current finalPlan
+            finalPlan = new ProjectNode(
+            		finalPlan, 
+            		selClause.getSelectValues());     
+        }
+        
         // We deal with our order by expressions
         List<OrderByExpression> orderByExprs = selClause.getOrderByExprs();
         if (!orderByExprs.isEmpty()) {
