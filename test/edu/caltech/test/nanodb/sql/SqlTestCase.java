@@ -16,6 +16,7 @@ import org.apache.commons.io.FileUtils;
 
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import edu.caltech.nanodb.expressions.TupleComparator;
 import edu.caltech.nanodb.expressions.TupleLiteral;
@@ -28,7 +29,12 @@ import edu.caltech.nanodb.storage.StorageManager;
 /**
  * This base-class provides functionality common to all testing classes that
  * issue SQL and examine the results.
+ *
+ * @review (Donnie) This class' constructors shouldn't be public; it is
+ *         intended to be subclassed, and only subclasses call the parent
+ *         class constructors.  Alas, TestNG requires us to do this...
  */
+@Test(enabled=false)
 public class SqlTestCase {
 
     public static final String TEST_SQL_PROPS =
@@ -52,12 +58,12 @@ public class SqlTestCase {
 
 
 
-    protected SqlTestCase(String setupSQLPropName) {
+    public SqlTestCase(String setupSQLPropName) {
         this.setupSQLPropName = setupSQLPropName;
     }
 
 
-    protected SqlTestCase() {
+    public SqlTestCase() {
         this(null);
     }
 
