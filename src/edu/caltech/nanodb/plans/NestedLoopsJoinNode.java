@@ -32,12 +32,16 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     /** Set to true when we have exhausted all tuples from our subplans. */
     private boolean done;
 
+    /** set to true if the join type is semi or anti*/
     private boolean sem_ant;
 
+    /** Set to true if the join type is an outer join*/
     private boolean outer;
 
+    /** Set in the prepare method to a all null tuple to be joined to null-pad tuples*/
     private TupleLiteral nullPad;
 
+    /** state variable used to keep track of if corresponding tuples have been joined*/
     private boolean found;
 
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
@@ -160,34 +164,28 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // Use the parent class' helper-function to prepare the schema.
         prepareSchemaStats();
 
+        /** if the join is an anit or semi join, must change the schema to that of the left child*/
         if (joinType == JoinType.ANTIJOIN || joinType == JoinType.SEMIJOIN) {
             schema = leftChild.getSchema();
             sem_ant = true;
             outer = false;
         }
+        /** If the join type is an outer, sets state variables and creates the null-pad tuple*/
         else if (joinType == JoinType.LEFT_OUTER || joinType == JoinType.RIGHT_OUTER) {
             outer = true;
             sem_ant = false;
-/*            if(joinType == JoinType.RIGHT_OUTER) {
-                PlanNode temp = leftChild;
-                leftChild = rightChild;
-                rightChild = temp;
-
-                }*/
             if (joinType == JoinType.LEFT_OUTER)
                 nullPad = new TupleLiteral(rightChild.getSchema().numColumns());
             else {
                 nullPad = new TupleLiteral(leftChild.getSchema().numColumns());
             }
         }
+        /** if the join is an inner join*/
         else {
             sem_ant = false;
             outer = false;
         }
-//        prepareSchemaStats();
 
-
-        // TODO:  Implement the rest
         cost = null;
     }
 
@@ -195,6 +193,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void initialize() {
         super.initialize();
 
+        /** instantiated the state variable whenever this node is called*/
         found = false;
         done = false;
         leftTuple = null;
@@ -212,70 +211,88 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public Tuple getNextTuple() throws IOException {
         if (done)
             return null;
-        if(joinType == JoinType.INNER) {
-            if(leftTuple == null) {
-                leftTuple = leftChild.getNextTuple();
+        /** splits the program based on the type of join with default case being antijoin*/
+        switch(joinType) {
+            case INNER:
+                /** This statement and variants for other joins will only execute the first
+                 *  time the method is called.  The statement moves to the first tuple from
+                 *  the left child if such a tuple exists.*/
                 if (leftTuple == null) {
-                    done = true;
-                    return null;
-                }///fix to actually work with outer and semi and anit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            }
-            while (getInner())
-                if (canJoinTuples())
-                    return joinTuples(leftTuple, rightTuple);
-        }
-        else if(joinType == JoinType.LEFT_OUTER) {
-            if (leftTuple == null) {
-                leftTuple = leftChild.getNextTuple();
+                    leftTuple = leftChild.getNextTuple();
+                    if (leftTuple == null) {
+                        done = true;
+                        return null;
+                    }
+                }
+                /** gets tuples from helper methods and returns them*/
+                while (getInner())
+                    if (canJoinTuples())
+                        return joinTuples(leftTuple, rightTuple);
+                break;
+            case LEFT_OUTER:
                 if (leftTuple == null) {
-                    done = true;
-                    return null;
+                    leftTuple = leftChild.getNextTuple();
+                    if (leftTuple == null) {
+                        done = true;
+                        return null;
+                    }
                 }
-            }
-            while (getLeftOuter()) {
-                if (canJoinTuples()) {
-                    found = true;
-                    return joinTuples(leftTuple, rightTuple);
+                while (getLeftOuter()) {
+                    if (canJoinTuples()) {
+                        /** if a tuple was found to join the current left tuple, set the state
+                         * varaible to true.*/
+                        found = true;
+                        return joinTuples(leftTuple, rightTuple);
+                    }
+                    /** this statement executes if the current left tuple was not joined with any
+                     * tuple from the right child. Then it is null padded and returned.
+                     */
+                    else if (rightTuple == nullPad) {
+                        found = false;
+                        return joinTuples(leftTuple, rightTuple);
+                    }
                 }
-                else if (rightTuple == nullPad) {
-                    found = false;
-                    return joinTuples(leftTuple, rightTuple);
-                }
-            }
-        }
-        else if(joinType == JoinType.RIGHT_OUTER) {
-            if (rightTuple == null) {
-                rightTuple = rightChild.getNextTuple();
+                break;
+            case RIGHT_OUTER:
+                /** This section works exactly as the LeftOuter section with tuples reversed*/
                 if (rightTuple == null) {
-                    done = true;
-                    return null;
+                    rightTuple = rightChild.getNextTuple();
+                    if (rightTuple == null) {
+                        done = true;
+                        return null;
+                    }
                 }
-            }
-            while (getRightOuter()) {
-                if (canJoinTuples()) {
-                    found = true;
-                    return joinTuples(leftTuple, rightTuple);
+                while (getRightOuter()) {
+                    if (canJoinTuples()) {
+                        found = true;
+                        return joinTuples(leftTuple, rightTuple);
+                    } else if (leftTuple == nullPad) {
+                        found = false;
+                        return joinTuples(leftTuple, rightTuple);
+                    }
                 }
-                else if (leftTuple == nullPad) {
-                    found = false;
-                    return joinTuples(leftTuple, rightTuple);
-                }
-            }
-        }
-        else {
-            if (joinType == JoinType.SEMIJOIN) {
+                break;
+            case SEMIJOIN:
+                /** this this method, when called, will immediately proceed to the next tuple on
+                 * the left child (as the previous call to this method will have returned
+                 * the current tuple and semi join does not return multisets.
+                 */
                 while (leftChild.getNextTuple() != null) {
                     leftTuple = leftChild.getNextTuple();
+                    /** restarts the right child to check for matching tuples*/
                     rightChild.initialize();
                     while (rightChild.getNextTuple() != null) {
                         rightTuple = rightChild.getNextTuple();
+                        /** if there is a possible join, return the left tuple*/
                         if (canJoinTuples())
                             return leftTuple;
                     }
                 }
-            }
-            else {
+                break;
+            default:
+                /** this will execute if the join is an anitjoin*/
                 while (leftChild.getNextTuple() != null) {
+                    /** state variable represents if the current tuple can join from any tuple in right child.*/
                     found = false;
                     leftTuple = leftChild.getNextTuple();
                     rightChild.initialize();
@@ -287,29 +304,16 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     if (!found)
                         return leftTuple;
                 }
-            }
-            done = true;
+                done = true;
+                break;
         }
         return null;
     }
 
-
-    /**
-     * This helper function implements the logic that sets {@link #leftTuple}
-     * and {@link #rightTuple} based on the nested-loops logic.
-     *
-     * @return {@code true} if another pair of tuples was found to join, or
-     *         {@code false} if no more pairs of tuples are available to join.
+    /** This method uses a nested-loop search with modification that if no tuple is found for a given right tuple
+     * represented by the state variable 'found', the left tuple is passed back with the right tuple set
+     * to a null-column tuple.  The method returns false when there are no more tuples to process.
      */
-    private boolean getTuplesToJoin() throws IOException {
-       if (outer) {
-            if(joinType == JoinType.LEFT_OUTER)
-                return getLeftOuter();
-            return getRightOuter();
-        }
-        return getInner();
-    }
-
     private boolean getLeftOuter() throws IOException {
         while(true) {
             if(rightTuple == nullPad) {
@@ -340,6 +344,10 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         }
     }
 
+    /** works exactly as getLeftOuter with side reversed.  Uses a nested loop search with modification
+     * that if no tuple is found for a right tuple, the right tuple is returned with a null-column
+     * left tuple. Returns false when there are no more tuples.
+     */
     private boolean getRightOuter() throws IOException {
         while(true) {
             if(leftTuple == nullPad) {
@@ -370,6 +378,11 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         }
     }
 
+    /** This method executes a natural nested-loop searching for each tuple in the right child
+     * before advancing the next tuple of the left child and restarting the right child.
+     * @return
+     * @throws IOException
+     */
     private boolean getInner() throws IOException {
         while(true) {
             rightTuple = rightChild.getNextTuple();
@@ -406,8 +419,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void resetToLastMark() throws IllegalStateException {
         leftChild.resetToLastMark();
         rightChild.resetToLastMark();
-        //if (joinType == JoinType.ANTIJOIN || joinType == JoinType.SEMIJOIN)
-        //    rightChild.initialize();
         // TODO:  Prepare to reevaluate the join operation for the tuples.
         //        (Just haven't gotten around to implementing this.)
     }
@@ -416,6 +427,5 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void cleanUp() {
         leftChild.cleanUp();
         rightChild.cleanUp();
-//        nullPad.unpin();
     }
 }
