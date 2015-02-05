@@ -57,7 +57,7 @@ public class TestSimpleJoins extends SqlTestCase {
         assert checkUnorderedResults(expected3, result);
 
         result = server.doCommand(
-                "SELECT * FROM simple_1 INNER JOIN simple_2", true);
+                "SELECT * FROM simple_1 INNER JOIN simple_2 ON simple_1.a = simple_2.a", true);
         TupleLiteral[] expected4 = {
                 new TupleLiteral( 1 , 2 , 1 , 3 ),
                 new TupleLiteral( 1 , 2 , 1 , 4 ),
@@ -87,20 +87,23 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand(
                 "SELECT * FROM simple_1 LEFT OUTER JOIN empty_table_1", true);
         TupleLiteral[] expected7 = {
+            new TupleLiteral( 1 , 2 , null , null ),
+            new TupleLiteral( 1 , 6 , null , null ),
+            new TupleLiteral( 3 , 9 , null , null )
         };
         assert checkSizeResults(expected7, result);
         assert checkUnorderedResults(expected7, result);
 
         result = server.doCommand(
-                "SELECT * FROM simple_1 LEFT OUTER JOIN simple_2", true);
+                "SELECT * FROM simple_1 LEFT OUTER JOIN simple_2 ON simple_1.a = simple_2.a", true);
         TupleLiteral[] expected8 = {
-                new TupleLiteral( 1 , 2 , 3 ),
-                new TupleLiteral( 1 , 2 , 4 ),
-                new TupleLiteral( 1 , 2 , 5 ),
-                new TupleLiteral( 1 , 6 , 3 ),
-                new TupleLiteral( 1 , 6 , 4 ),
-                new TupleLiteral( 1 , 6 , 5 ),
-                new TupleLiteral( 3 , 9 , null )
+                new TupleLiteral( 1 , 2 , 1 , 3 ),
+                new TupleLiteral( 1 , 2 , 1 , 4 ),
+                new TupleLiteral( 1 , 2 , 1 , 5 ),
+                new TupleLiteral( 1 , 6 , 1 , 3 ),
+                new TupleLiteral( 1 , 6 , 1 , 4 ),
+                new TupleLiteral( 1 , 6 , 1 , 5 ),
+                new TupleLiteral( 3 , 9 , null , null )
         };
         assert checkSizeResults(expected8, result);
         assert checkUnorderedResults(expected8, result);
@@ -116,6 +119,9 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand(
                 "SELECT * FROM empty_table_1 RIGHT OUTER JOIN simple_1", true);
         TupleLiteral[] expected10 = {
+            new TupleLiteral( null , null , 1 , 2 ),
+            new TupleLiteral( null , null , 1 , 6 ),
+            new TupleLiteral( null , null , 3 , 9 )
         };
         assert checkSizeResults(expected10, result);
         assert checkUnorderedResults(expected10, result);
@@ -128,7 +134,7 @@ public class TestSimpleJoins extends SqlTestCase {
         assert checkUnorderedResults(expected11, result);
 
         result = server.doCommand(
-                "SELECT a, b, c FROM simple_1 INNER JOIN simple_2", true);
+                "SELECT simple_2.a, b, c FROM simple_1 RIGHT OUTER JOIN simple_2 ON simple_1.a = simple_2.a", true);
         TupleLiteral[] expected12 = {
                 new TupleLiteral( 1 , 2 , 3 ),
                 new TupleLiteral( 1 , 2 , 4 ),

@@ -229,7 +229,7 @@ public class SimplePlanner implements Planner {
 	    		// We use a project node to avoid duplicate column names
 	    		ArrayList<SelectValue> prepSelVal = 
 	    				fromClause.getPreparedSelectValues();
-	    		if (!prepSelVal.isEmpty()) {
+	    		if (prepSelVal != null) {
 	    			finalPlan = new ProjectNode(finalPlan, prepSelVal);
 	    		}
 	    		break;

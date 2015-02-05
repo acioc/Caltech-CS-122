@@ -4,6 +4,7 @@ package edu.caltech.nanodb.plans;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.expressions.TupleLiteral;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.Expression;
@@ -31,6 +32,13 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     /** Set to true when we have exhausted all tuples from our subplans. */
     private boolean done;
 
+    private boolean sem_ant;
+
+    private boolean outer;
+
+    private TupleLiteral nullPad;
+
+    private boolean found;
 
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
@@ -152,6 +160,33 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // Use the parent class' helper-function to prepare the schema.
         prepareSchemaStats();
 
+        if (joinType == JoinType.ANTIJOIN || joinType == JoinType.SEMIJOIN) {
+            schema = leftChild.getSchema();
+            sem_ant = true;
+            outer = false;
+        }
+        else if (joinType == JoinType.LEFT_OUTER || joinType == JoinType.RIGHT_OUTER) {
+            outer = true;
+            sem_ant = false;
+/*            if(joinType == JoinType.RIGHT_OUTER) {
+                PlanNode temp = leftChild;
+                leftChild = rightChild;
+                rightChild = temp;
+
+                }*/
+            if (joinType == JoinType.LEFT_OUTER)
+                nullPad = new TupleLiteral(rightChild.getSchema().numColumns());
+            else {
+                nullPad = new TupleLiteral(leftChild.getSchema().numColumns());
+            }
+        }
+        else {
+            sem_ant = false;
+            outer = false;
+        }
+//        prepareSchemaStats();
+
+
         // TODO:  Implement the rest
         cost = null;
     }
@@ -160,6 +195,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void initialize() {
         super.initialize();
 
+        found = false;
         done = false;
         leftTuple = null;
         rightTuple = null;
@@ -176,12 +212,84 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public Tuple getNextTuple() throws IOException {
         if (done)
             return null;
-
-        while (getTuplesToJoin()) {
-            if (canJoinTuples())
-                return joinTuples(leftTuple, rightTuple);
+        if(joinType == JoinType.INNER) {
+            if(leftTuple == null) {
+                leftTuple = leftChild.getNextTuple();
+                if (leftTuple == null) {
+                    done = true;
+                    return null;
+                }///fix to actually work with outer and semi and anit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            while (getInner())
+                if (canJoinTuples())
+                    return joinTuples(leftTuple, rightTuple);
         }
-
+        else if(joinType == JoinType.LEFT_OUTER) {
+            if (leftTuple == null) {
+                leftTuple = leftChild.getNextTuple();
+                if (leftTuple == null) {
+                    done = true;
+                    return null;
+                }
+            }
+            while (getLeftOuter()) {
+                if (canJoinTuples()) {
+                    found = true;
+                    return joinTuples(leftTuple, rightTuple);
+                }
+                else if (rightTuple == nullPad) {
+                    found = false;
+                    return joinTuples(leftTuple, rightTuple);
+                }
+            }
+        }
+        else if(joinType == JoinType.RIGHT_OUTER) {
+            if (rightTuple == null) {
+                rightTuple = rightChild.getNextTuple();
+                if (rightTuple == null) {
+                    done = true;
+                    return null;
+                }
+            }
+            while (getRightOuter()) {
+                if (canJoinTuples()) {
+                    found = true;
+                    return joinTuples(leftTuple, rightTuple);
+                }
+                else if (leftTuple == nullPad) {
+                    found = false;
+                    return joinTuples(leftTuple, rightTuple);
+                }
+            }
+        }
+        else {
+            if (joinType == JoinType.SEMIJOIN) {
+                while (leftChild.getNextTuple() != null) {
+                    leftTuple = leftChild.getNextTuple();
+                    rightChild.initialize();
+                    while (rightChild.getNextTuple() != null) {
+                        rightTuple = rightChild.getNextTuple();
+                        if (canJoinTuples())
+                            return leftTuple;
+                    }
+                }
+            }
+            else {
+                while (leftChild.getNextTuple() != null) {
+                    found = false;
+                    leftTuple = leftChild.getNextTuple();
+                    rightChild.initialize();
+                    while (rightChild.getNextTuple() != null) {
+                        rightTuple = rightChild.getNextTuple();
+                        if (canJoinTuples())
+                            found = true;
+                    }
+                    if (!found)
+                        return leftTuple;
+                }
+            }
+            done = true;
+        }
         return null;
     }
 
@@ -194,10 +302,87 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
      *         {@code false} if no more pairs of tuples are available to join.
      */
     private boolean getTuplesToJoin() throws IOException {
-        // TODO:  Implement
-        return false;
+       if (outer) {
+            if(joinType == JoinType.LEFT_OUTER)
+                return getLeftOuter();
+            return getRightOuter();
+        }
+        return getInner();
     }
 
+    private boolean getLeftOuter() throws IOException {
+        while(true) {
+            if(rightTuple == nullPad) {
+                found = false;
+                leftTuple = leftChild.getNextTuple();
+                if (leftTuple == null) {
+                    done = true;
+                    return false;
+                }
+            }
+            rightTuple = rightChild.getNextTuple();
+            if (rightTuple == null) {
+                if (!found) {
+                    rightTuple = nullPad;
+                    rightChild.initialize();
+                    return true;
+                }
+                leftTuple = leftChild.getNextTuple();
+                if (leftTuple == null) {
+                    done = true;
+                    return false;
+                }
+                found = false;
+                rightChild.initialize();
+            }
+            else
+                return true;
+        }
+    }
+
+    private boolean getRightOuter() throws IOException {
+        while(true) {
+            if(leftTuple == nullPad) {
+                found = false;
+                rightTuple = rightChild.getNextTuple();
+                if (rightTuple == null) {
+                    done = true;
+                    return false;
+                }
+            }
+            leftTuple = leftChild.getNextTuple();
+            if (leftTuple == null) {
+                if (!found) {
+                    leftTuple = nullPad;
+                    leftChild.initialize();
+                    return true;
+                }
+                rightTuple = rightChild.getNextTuple();
+                if (rightTuple == null) {
+                    done = true;
+                    return false;
+                }
+                found = false;
+                leftChild.initialize();
+            }
+            else
+                return true;
+        }
+    }
+
+    private boolean getInner() throws IOException {
+        while(true) {
+            rightTuple = rightChild.getNextTuple();
+            if(rightTuple == null) {
+                leftTuple = leftChild.getNextTuple();
+                if(leftTuple == null)
+                    return false;
+                rightChild.initialize();
+            }
+            else
+                return true;
+        }
+    }
 
     private boolean canJoinTuples() {
         // If the predicate was not set, we can always join them!
@@ -221,7 +406,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void resetToLastMark() throws IllegalStateException {
         leftChild.resetToLastMark();
         rightChild.resetToLastMark();
-
+        //if (joinType == JoinType.ANTIJOIN || joinType == JoinType.SEMIJOIN)
+        //    rightChild.initialize();
         // TODO:  Prepare to reevaluate the join operation for the tuples.
         //        (Just haven't gotten around to implementing this.)
     }
@@ -230,5 +416,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     public void cleanUp() {
         leftChild.cleanUp();
         rightChild.cleanUp();
+//        nullPad.unpin();
     }
 }
