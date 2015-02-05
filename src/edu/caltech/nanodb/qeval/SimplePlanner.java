@@ -2,10 +2,12 @@ package edu.caltech.nanodb.qeval;
 
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.AggregateProcessor;
+
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
@@ -111,8 +113,6 @@ public class SimplePlanner implements Planner {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
         }
 
-
-
         // We handle our grouping and aggregation
         List<Expression> groupExp = selClause.getGroupByExprs();
         if(processor.hasAggregate() || !groupExp.isEmpty()) {
@@ -127,7 +127,6 @@ public class SimplePlanner implements Planner {
                 finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
             }
         }
-
         
         // We handle non-trivial projects
         if (!selClause.isTrivialProject()) {
@@ -185,9 +184,11 @@ public class SimplePlanner implements Planner {
 	    				fromClause.getJoinType(), 
 	    				fromClause.getPreparedJoinExpr());
 	    		// We use a project node to avoid duplicate column names
-	    		finalPlan = new ProjectNode(
-	    				finalPlan, 
-	    				fromClause.getPreparedSelectValues());
+	    		ArrayList<SelectValue> prepSelVal = 
+	    				fromClause.getPreparedSelectValues();
+	    		if (!prepSelVal.isEmpty()) {
+	    			finalPlan = new ProjectNode(finalPlan, prepSelVal);
+	    		}
 	    		break;
 	    		
 	    	// We can currently throw an exception for this last case
