@@ -140,5 +140,7 @@ public class TestSimpleJoins extends SqlTestCase {
         };
         assert checkSizeResults(expected12, result);
         assert checkUnorderedResults(expected12, result);
+
+
     }
 }

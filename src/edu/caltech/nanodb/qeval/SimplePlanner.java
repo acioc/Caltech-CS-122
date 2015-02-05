@@ -77,7 +77,26 @@ public class SimplePlanner implements Planner {
         PlanNode finalPlan;
 
         // We check if we have aggregates
+
+        Expression whereExpr = selClause.getWhereExpr();
+
         AggregateProcessor processor = new AggregateProcessor();
+
+        // Check if where clause contains aggregate functions (it shouldn't!)
+        if(whereExpr != null) {
+            whereExpr.traverse(processor);
+            if(processor.hasAggregate()) {
+                throw new IllegalArgumentException(
+                        "Where clause cannot contain aggregate functions."
+                );
+            }
+        }
+
+        // Check if on clauses contains aggregate functions (they shouldn't)
+        if(fromClause != null) {
+            checkFromClause(fromClause, processor);
+        }
+
 
         for( SelectValue sv : selClause.getSelectValues()) {
             if(!sv.isExpression()) continue;
@@ -107,7 +126,6 @@ public class SimplePlanner implements Planner {
         	return finalPlan;
         }
 
-        Expression whereExpr = selClause.getWhereExpr();
         // We handle a simple select
         if (whereExpr != null) {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
@@ -146,7 +164,32 @@ public class SimplePlanner implements Planner {
         finalPlan.prepare();
         return finalPlan;
     }
-    
+
+    public void checkFromClause(FromClause fromClause, AggregateProcessor processor) {
+        switch (fromClause.getClauseType()) {
+
+            case BASE_TABLE:
+                break;
+
+            case JOIN_EXPR:
+                if(fromClause.getOnExpression() != null) {
+                    fromClause.getOnExpression().traverse(processor);
+                    if(processor.hasAggregate()){
+                        throw new IllegalArgumentException(
+                                "On clause cannot contain aggregate function."
+                        );
+                    }
+                    else {
+                        checkFromClause(fromClause.getLeftChild(), processor);
+                        checkFromClause(fromClause.getRightChild(), processor);
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     /**
      * Acts as a helper function for dealing with the FROM clause of a query.
      * 
