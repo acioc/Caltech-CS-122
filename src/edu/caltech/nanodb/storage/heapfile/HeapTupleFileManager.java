@@ -45,31 +45,11 @@ public class HeapTupleFileManager implements TupleFileManager {
             "Initializing new heap tuple file %s with %d columns",
             dbFile, schema.numColumns()));
 
-        // Table schema is stored into the header page, so get it and prepare
-        // to write out the schema information.
-        DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
-        PageWriter hpWriter = new PageWriter(headerPage);
-        // Skip past the page-size value.
-        hpWriter.setPosition(HeaderPage.OFFSET_SCHEMA_START);
-
-        // Write out the schema details now.
-        SchemaWriter schemaWriter = new SchemaWriter();
-        schemaWriter.writeTableSchema(schema, hpWriter);
-
-        // Compute and store the schema's size.
-        int schemaEndPos = hpWriter.getPosition();
-        int schemaSize = schemaEndPos - HeaderPage.OFFSET_SCHEMA_START;
-        HeaderPage.setSchemaSize(headerPage, schemaSize);
-
-        // Write in empty statistics, so that the values are at least
-        // initialized to something.
         TableStats stats = new TableStats(schema.numColumns());
-        StatsWriter statsWriter = new StatsWriter();
-        statsWriter.writeTableStats(schema, stats, hpWriter);
-        int statsSize = hpWriter.getPosition() - schemaEndPos;
-        HeaderPage.setStatsSize(headerPage, statsSize);
-
-        return new HeapTupleFile(storageManager, dbFile, schema, stats);
+        HeapTupleFile tupleFile = new HeapTupleFile(storageManager, this,
+            dbFile, schema, stats);
+        saveMetadata(tupleFile);
+        return tupleFile;
     }
 
 
@@ -93,13 +73,51 @@ public class HeapTupleFileManager implements TupleFileManager {
         StatsWriter statsWriter = new StatsWriter();
         TableStats stats = statsWriter.readTableStats(hpReader, schema);
 
-        return new HeapTupleFile(storageManager, dbFile, schema, stats);
+        return new HeapTupleFile(storageManager, this, dbFile, schema, stats);
     }
 
 
     @Override
     public void saveMetadata(TupleFile tupleFile) throws IOException {
-        throw new UnsupportedOperationException("NYI");
+
+        if (tupleFile == null)
+            throw new IllegalArgumentException("tupleFile cannot be null");
+
+        // Curiously, we never cast the tupleFile reference to HeapTupleFile,
+        // but still, it would be very awkward if we tried to update the
+        // metadata of some different kind of tuple file...
+        if (!(tupleFile instanceof HeapTupleFile)) {
+            throw new IllegalArgumentException(
+                "tupleFile must be an instance of HeapTupleFile");
+        }
+
+        DBFile dbFile = tupleFile.getDBFile();
+
+        TableSchema schema = tupleFile.getSchema();
+        TableStats stats = tupleFile.getStats();
+
+        // Table schema is stored into the header page, so get it and prepare
+        // to write out the schema information.
+        DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+        PageWriter hpWriter = new PageWriter(headerPage);
+        // Skip past the page-size value.
+        hpWriter.setPosition(HeaderPage.OFFSET_SCHEMA_START);
+
+        // Write out the schema details now.
+        SchemaWriter schemaWriter = new SchemaWriter();
+        schemaWriter.writeTableSchema(schema, hpWriter);
+
+        // Compute and store the schema's size.
+        int schemaEndPos = hpWriter.getPosition();
+        int schemaSize = schemaEndPos - HeaderPage.OFFSET_SCHEMA_START;
+        HeaderPage.setSchemaSize(headerPage, schemaSize);
+
+        // Write in empty statistics, so that the values are at least
+        // initialized to something.
+        StatsWriter statsWriter = new StatsWriter();
+        statsWriter.writeTableStats(schema, stats, hpWriter);
+        int statsSize = hpWriter.getPosition() - schemaEndPos;
+        HeaderPage.setStatsSize(headerPage, statsSize);
     }
 
 
