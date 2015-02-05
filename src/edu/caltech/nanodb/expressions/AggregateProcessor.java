@@ -11,24 +11,36 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by dinglis on 2/2/15.
+ *
+ * An implementation of ExpressionProcessor. Takes an input query,
+ * replaces every aggregate function in that query with a custom
+ * column value, generating a unique name for each column.
+ * Stores a map of all the replaced functions and the columns
+ * they were replaced with.
  */
 public class AggregateProcessor implements ExpressionProcessor {
 
-    // The number of aggregate functions processed
+    /**
+     *    The number of aggregate functions processed, used to
+     *    generate unique column names.
+     */
     private int aggregateCount = 0;
 
-    // Flag for whether or not an aggregate has been processed
+    /**
+     * Flag for checking if an aggregate has been processed from the input
+     */
     private boolean hasAggregate;
 
-
-    private List<Expression> aggExpressions;
-
+    /**
+     * The map of strings of new column names, and the
+     * function that column was created to replace.
+     */
     private Map<String, FunctionCall> renameMap;
 
+    /**
+     * Default constructor, initializes some private variables.
+     */
     public AggregateProcessor() {
-
-        aggExpressions = new ArrayList<Expression>();
         aggregateCount = 0;
         renameMap = new HashMap();
     }
@@ -37,11 +49,12 @@ public class AggregateProcessor implements ExpressionProcessor {
 
     @Override
     public Expression leave(Expression node) {
+        // Checks if the expression is a function call,
+        // and then if that call is to an aggregate function
         if (node instanceof FunctionCall) {
             FunctionCall call = (FunctionCall) node;
             Function f = call.getFunction();
             if (f instanceof AggregateFunction) {
-                aggExpressions.add(node);
                 hasAggregate = true;
                 ColumnName newName = new ColumnName("#" + aggregateCount);
                 renameMap.put("#" + aggregateCount, call);
@@ -64,15 +77,22 @@ public class AggregateProcessor implements ExpressionProcessor {
 
     }
 
+    /**
+     * Accessor method for the map of string/function pairs.
+     * @return the map of pairs of column names and
+     * the type of aggregate function each one replaced.
+     */
     public Map<String, FunctionCall> getMap() {
         return renameMap;
     }
 
+    /**
+     * Accessor method for the hasAggregate flag.
+     * @return The flag representing whether or not
+     * the processor has encountered an aggregate function.
+     */
     public boolean hasAggregate() {
         return hasAggregate;
     }
 
-    public List<Expression> getList() {
-        return aggExpressions;
-    }
 }

@@ -111,6 +111,8 @@ public class SimplePlanner implements Planner {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
         }
 
+
+
         // We handle our grouping and aggregation
         List<Expression> groupExp = selClause.getGroupByExprs();
         if(processor.hasAggregate() || !groupExp.isEmpty()) {
@@ -118,7 +120,14 @@ public class SimplePlanner implements Planner {
             		finalPlan,
             		groupExp, 
             		processor.getMap());
+            // We deal with our having expressions
+            Expression haveExpr =  selClause.getHavingExpr();
+            if (haveExpr != null) {
+                haveExpr.traverse(processor);
+                finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
+            }
         }
+
         
         // We handle non-trivial projects
         if (!selClause.isTrivialProject()) {
@@ -126,12 +135,6 @@ public class SimplePlanner implements Planner {
             finalPlan = new ProjectNode(
             		finalPlan, 
             		selClause.getSelectValues());     
-        }
-        
-        // We deal with our having expressions
-        Expression haveExpr =  selClause.getHavingExpr();
-        if (haveExpr != null) {
-        	//TODO: finalPlan = new SimpleFilterNode(finalPlan, haveExpr);
         }
         
         // We deal with our order by expressions
