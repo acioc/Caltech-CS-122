@@ -26,12 +26,11 @@ public class TestSimpleJoins extends SqlTestCase {
     }
 
     /**
-     * This tests nanodb's ability to handle inner, right outer, and
-     * left outer joins under simple use cases.
+     * Tests inner join implementation
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    public void testSimpleJoins() throws Throwable {
+    public void testInnerJoins() throws Throwable {
         CommandResult result;
 
         result = server.doCommand(
@@ -59,16 +58,23 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand(
                 "SELECT * FROM simple_1 INNER JOIN simple_2 ON simple_1.a = simple_2.a", true);
         TupleLiteral[] expected4 = {
-                new TupleLiteral( 1 , 2 , 1 , 3 ),
-                new TupleLiteral( 1 , 2 , 1 , 4 ),
-                new TupleLiteral( 1 , 2 , 1 , 5 ),
-                new TupleLiteral( 1 , 6 , 1 , 3 ),
-                new TupleLiteral( 1 , 6 , 1 , 4 ),
-                new TupleLiteral( 1 , 6 , 1 , 5 )
+                new TupleLiteral(1, 2, 1, 3),
+                new TupleLiteral(1, 2, 1, 4),
+                new TupleLiteral(1, 2, 1, 5),
+                new TupleLiteral(1, 6, 1, 3),
+                new TupleLiteral(1, 6, 1, 4),
+                new TupleLiteral(1, 6, 1, 5)
         };
         assert checkSizeResults(expected4, result);
         assert checkUnorderedResults(expected4, result);
+    }
 
+    /**
+     * Tests left outer join implementation
+     * @throws Throwable
+     */
+    public void testLeftOuterJoins() throws Throwable {
+        CommandResult result;
         result = server.doCommand(
                 "SELECT * FROM empty_table_1 LEFT OUTER JOIN empty_table_2", true);
         System.err.println("HAVING RESULTS = " + result.getTuples());
@@ -87,9 +93,9 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand(
                 "SELECT * FROM simple_1 LEFT OUTER JOIN empty_table_1", true);
         TupleLiteral[] expected7 = {
-            new TupleLiteral( 1 , 2 , null , null ),
-            new TupleLiteral( 1 , 6 , null , null ),
-            new TupleLiteral( 3 , 9 , null , null )
+                new TupleLiteral(1, 2, null, null),
+                new TupleLiteral(1, 6, null, null),
+                new TupleLiteral(3, 9, null, null)
         };
         assert checkSizeResults(expected7, result);
         assert checkUnorderedResults(expected7, result);
@@ -97,17 +103,24 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand(
                 "SELECT * FROM simple_1 LEFT OUTER JOIN simple_2 ON simple_1.a = simple_2.a", true);
         TupleLiteral[] expected8 = {
-                new TupleLiteral( 1 , 2 , 1 , 3 ),
-                new TupleLiteral( 1 , 2 , 1 , 4 ),
-                new TupleLiteral( 1 , 2 , 1 , 5 ),
-                new TupleLiteral( 1 , 6 , 1 , 3 ),
-                new TupleLiteral( 1 , 6 , 1 , 4 ),
-                new TupleLiteral( 1 , 6 , 1 , 5 ),
-                new TupleLiteral( 3 , 9 , null , null )
+                new TupleLiteral(1, 2, 1, 3),
+                new TupleLiteral(1, 2, 1, 4),
+                new TupleLiteral(1, 2, 1, 5),
+                new TupleLiteral(1, 6, 1, 3),
+                new TupleLiteral(1, 6, 1, 4),
+                new TupleLiteral(1, 6, 1, 5),
+                new TupleLiteral(3, 9, null, null)
         };
         assert checkSizeResults(expected8, result);
         assert checkUnorderedResults(expected8, result);
+    }
 
+    /**
+     * Tests right outer join implementation
+     * @throws Throwable
+     */
+    public void testRightOuterJoins() throws Throwable {
+        CommandResult result;
         result = server.doCommand(
                 "SELECT * FROM empty_table_1 RIGHT OUTER JOIN empty_table_2", true);
         System.err.println("HAVING RESULTS = " + result.getTuples());
@@ -146,5 +159,7 @@ public class TestSimpleJoins extends SqlTestCase {
         };
         assert checkSizeResults(expected12, result);
         assert checkUnorderedResults(expected12, result);
+
+
     }
 }

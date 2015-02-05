@@ -76,9 +76,28 @@ public class SimplePlanner implements Planner {
         // We establish a plan node
         PlanNode finalPlan;
 
-        // We check if we have aggregates
+        // Where expression of our query
+        Expression whereExpr = selClause.getWhereExpr();
+
+        // Processes expressions for aggregate functions
         AggregateProcessor processor = new AggregateProcessor();
 
+        // Check if where clause contains aggregate functions (it shouldn't!)
+        if(whereExpr != null) {
+            whereExpr.traverse(processor);
+            if(processor.hasAggregate()) {
+                throw new IllegalArgumentException(
+                        "Where clause cannot contain aggregate functions."
+                );
+            }
+        }
+
+        // Check if on clauses contains aggregate functions (they shouldn't)
+        if(fromClause != null) {
+            checkFromClause(fromClause, processor);
+        }
+
+        // Parses query, replaces aggregate functions with custom columns
         for( SelectValue sv : selClause.getSelectValues()) {
             if(!sv.isExpression()) continue;
 
@@ -107,7 +126,6 @@ public class SimplePlanner implements Planner {
         	return finalPlan;
         }
 
-        Expression whereExpr = selClause.getWhereExpr();
         // We handle a simple select
         if (whereExpr != null) {
             finalPlan = new SimpleFilterNode(finalPlan, whereExpr);
@@ -146,7 +164,40 @@ public class SimplePlanner implements Planner {
         finalPlan.prepare();
         return finalPlan;
     }
-    
+
+    /**
+     * Recursively checks a from clause and all its children for aggregate functions
+     * in the on expression
+     * @param fromClause the from clause being checked for aggregate functions
+     * @param processor the processor processing the on clause expressions
+     *
+     * @throws IllegalArgumentException if the clause contains an aggregate function
+     */
+    public void checkFromClause(FromClause fromClause, AggregateProcessor processor) {
+        switch (fromClause.getClauseType()) {
+
+            case BASE_TABLE:
+                break;
+
+            case JOIN_EXPR:
+                if(fromClause.getOnExpression() != null) {
+                    fromClause.getOnExpression().traverse(processor);
+                    if(processor.hasAggregate()){
+                        throw new IllegalArgumentException(
+                                "On clause cannot contain aggregate function."
+                        );
+                    }
+                    else {
+                        checkFromClause(fromClause.getLeftChild(), processor);
+                        checkFromClause(fromClause.getRightChild(), processor);
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     /**
      * Acts as a helper function for dealing with the FROM clause of a query.
      * 
