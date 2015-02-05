@@ -76,10 +76,10 @@ public class SimplePlanner implements Planner {
         // We establish a plan node
         PlanNode finalPlan;
 
-        // We check if we have aggregates
-
+        // Where expression of our query
         Expression whereExpr = selClause.getWhereExpr();
 
+        // Processes expressions for aggregate functions
         AggregateProcessor processor = new AggregateProcessor();
 
         // Check if where clause contains aggregate functions (it shouldn't!)
@@ -97,7 +97,7 @@ public class SimplePlanner implements Planner {
             checkFromClause(fromClause, processor);
         }
 
-
+        // Parses query, replaces aggregate functions with custom columns
         for( SelectValue sv : selClause.getSelectValues()) {
             if(!sv.isExpression()) continue;
 
@@ -165,6 +165,14 @@ public class SimplePlanner implements Planner {
         return finalPlan;
     }
 
+    /**
+     * Recursively checks a from clause and all its children for aggregate functions
+     * in the on expression
+     * @param fromClause the from clause being checked for aggregate functions
+     * @param processor the processor processing the on clause expressions
+     *
+     * @throws IllegalArgumentException if the clause contains an aggregate function
+     */
     public void checkFromClause(FromClause fromClause, AggregateProcessor processor) {
         switch (fromClause.getClauseType()) {
 

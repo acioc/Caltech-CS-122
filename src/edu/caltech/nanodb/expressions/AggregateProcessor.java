@@ -55,7 +55,23 @@ public class AggregateProcessor implements ExpressionProcessor {
             FunctionCall call = (FunctionCall) node;
             Function f = call.getFunction();
             if (f instanceof AggregateFunction) {
+
+                // First, we must check to make sure none of the arguments of this
+                // aggregate function are aggregates themselves
+                for (Expression e : call.getArguments()) {
+                    if(e instanceof FunctionCall) {
+                        FunctionCall temp = (FunctionCall) e;
+                        if(temp.getFunction() instanceof AggregateFunction) {
+                            throw new IllegalArgumentException(
+                                    "Aggregate function argument cannot bet an aggregate function"
+                            );
+                        }
+                    }
+                }
+                // We have an aggregate, so we flip this flag
                 hasAggregate = true;
+
+                // Creating a custom-named column, adding to hash map, then returning it
                 ColumnName newName = new ColumnName("#" + aggregateCount);
                 renameMap.put("#" + aggregateCount, call);
                 aggregateCount += 1;
