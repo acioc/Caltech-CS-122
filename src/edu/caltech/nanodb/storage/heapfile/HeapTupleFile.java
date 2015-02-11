@@ -40,6 +40,14 @@ public class HeapTupleFile implements TupleFile {
     private StorageManager storageManager;
 
 
+    /**
+     * The manager for heap tuple files provides some higher-level operations
+     * such as saving the metadata of a heap tuple file, so it's useful to
+     * have a reference to it.
+     */
+    private HeapTupleFileManager heapFileManager;
+
+
     /** The schema of tuples in this tuple file. */
     private TableSchema schema;
 
@@ -52,10 +60,14 @@ public class HeapTupleFile implements TupleFile {
     private DBFile dbFile;
 
 
-    public HeapTupleFile(StorageManager storageManager, DBFile dbFile,
+    public HeapTupleFile(StorageManager storageManager,
+                         HeapTupleFileManager heapFileManager, DBFile dbFile,
                          TableSchema schema, TableStats stats) {
         if (storageManager == null)
             throw new IllegalArgumentException("storageManager cannot be null");
+
+        if (heapFileManager == null)
+            throw new IllegalArgumentException("heapFileManager cannot be null");
 
         if (dbFile == null)
             throw new IllegalArgumentException("dbFile cannot be null");
@@ -67,6 +79,7 @@ public class HeapTupleFile implements TupleFile {
             throw new IllegalArgumentException("stats cannot be null");
 
         this.storageManager = storageManager;
+        this.heapFileManager = heapFileManager;
         this.dbFile = dbFile;
         this.schema = schema;
         this.stats = stats;
