@@ -440,11 +440,32 @@ public class SelectivityEstimator {
         ColumnStats colOneStats = stats.get(colOneIndex);
         ColumnStats colTwoStats = stats.get(colTwoIndex);
 
-        // TODO:  Compute the selectivity.  Note that the ColumnStats type
-        //        will return special values to indicate "unknown" stats;
-        //        your code should detect when this is the case, and fall
-        //        back on the default selectivity.
-
+        switch (compType) {
+        case EQUALS:
+        case NOT_EQUALS:
+            // Compute the equality value.  Then, if inequality, invert the
+            // result.
+        	int numUniqueOne = colOneStats.getNumUniqueValues();
+        	int numUniqueTwo = colTwoStats.getNumUniqueValues();
+        	// We fall back to default if necessary
+        	if ((numUniqueOne == -1) || (numUniqueTwo == -1)) {
+        		return selectivity;
+        	}
+        	// We compute the selectivity
+        	// TODO: CHECK IF THIS IS CORRECT
+        	selectivity = (1 / numUniqueOne) * (1 / numUniqueTwo);
+        	
+        	// We invert this if necessary
+        	if (compType == CompareOperator.Type.NOT_EQUALS) {
+        		selectivity = 1 - selectivity;
+        	}
+        	
+            break;
+        	
+        default:
+            // Shouldn't be any other comparison types...
+            assert false : "Unexpected compare-operator type:  " + compType;
+        }
         return selectivity;
     }
 
