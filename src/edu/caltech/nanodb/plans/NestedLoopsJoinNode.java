@@ -5,10 +5,13 @@ import java.io.IOException;
 import java.util.List;
 
 import edu.caltech.nanodb.expressions.TupleLiteral;
+
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.qeval.PlanCost;
+import edu.caltech.nanodb.qeval.SelectivityEstimator;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Tuple;
 
@@ -164,7 +167,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // Use the parent class' helper-function to prepare the schema.
         prepareSchemaStats();
 
-        /** if the join is an anit or semi join, must change the schema to that of the left child*/
+        /** if the join is an anti or semi join, must change the schema to that of the left child*/
         if (joinType == JoinType.ANTIJOIN || joinType == JoinType.SEMIJOIN) {
             schema = leftChild.getSchema();
             sem_ant = true;
@@ -185,8 +188,50 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             sem_ant = false;
             outer = false;
         }
-
-        cost = null;
+        
+        // We obtain the cost of our children
+        PlanCost lChildCost = leftChild.getCost();
+        PlanCost rChildCost = rightChild.getCost();
+        
+        // Our base number of tuples is the two tuples multiplied together
+        float totalTuples = lChildCost.numTuples * rChildCost.numTuples;
+        
+        // If we have a predicate, we multiply by this value
+        if (predicate != null) {
+        	// We use a selectivity estimator if necessary
+        	float selValue = SelectivityEstimator.estimateSelectivity(
+        			predicate, 
+        			schema, 
+        			stats);
+        	
+        	// Anti-joins will have the opposite of our estimated selectivity
+            if (joinType == JoinType.ANTIJOIN || 
+            		joinType == JoinType.SEMIJOIN) {
+            	selValue = 1 - selValue;
+            }
+            totalTuples *= selValue;
+        }
+        // Outer joins require extra nodes for their bounds
+        if (joinType == JoinType.LEFT_OUTER) {
+        	totalTuples += lChildCost.numTuples;
+        }
+        else if (joinType == JoinType.RIGHT_OUTER) {
+        	totalTuples += rChildCost.numTuples;
+        }
+        
+        cost = new PlanCost(
+        		// We have our total number of tuples
+        		totalTuples,
+        		// Our overall tuple size is now the size of the two
+        		// tuples added together
+        		lChildCost.tupleSize + rChildCost.tupleSize,
+        		// Our CPU cost is the cost of going through every tuple
+        		// on the right child for every tuple on the left
+        		// and for going through every left child tuple
+        		lChildCost.numTuples * rChildCost.cpuCost + lChildCost.cpuCost,
+                // Our block cost is the cost of going through the blocks
+                // in the two children
+                lChildCost.numBlockIOs + rChildCost.numBlockIOs);
     }
 
 

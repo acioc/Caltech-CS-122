@@ -2,22 +2,25 @@ package edu.caltech.nanodb.plans;
 
 
 import java.io.IOException;
-
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.qeval.ColumnStats;
 import edu.caltech.nanodb.qeval.PlanCost;
 import edu.caltech.nanodb.qeval.SelectivityEstimator;
 import edu.caltech.nanodb.qeval.TableStats;
+import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
+import edu.caltech.nanodb.storage.DBFile;
 import edu.caltech.nanodb.storage.FilePointer;
 import edu.caltech.nanodb.storage.TupleFile;
 import edu.caltech.nanodb.storage.InvalidFilePointerException;
-
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.OrderByExpression;
 
+import edu.caltech.nanodb.qeval.SelectivityEstimator;
 
 /**
  * A select plan-node that scans a tuple file, checking the optional predicate
@@ -173,8 +176,26 @@ public class FileScanNode extends SelectNode {
         TableStats tableStats = tupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
-        // TODO:  Compute the cost of the plan node!
-        cost = null;
+        // Compute the cost of a filescan
+        float totalTuples = tableStats.numTuples;
+        
+        // If we have a predicate, we multiply by this value
+        if (predicate != null) {
+        	// We use a selectivity estimator if necessary
+        	totalTuples *= SelectivityEstimator.estimateSelectivity(
+        			predicate, 
+        			schema, 
+        			stats);
+        }
+        cost = new PlanCost(
+        		// The number of tuples we will produce
+        		totalTuples, 
+        		// The size of a tuple
+        		tableStats.avgTupleSize, 
+        		// The total number of tuples (1 tuple = 1 CPU cost)
+        		totalTuples, 
+        		// numBlockIOs 
+        		tableStats.numDataPages);
 
         // TODO:  We should also update the table statistics based on the
         //        predicate, but that's too complicated, so we'll leave them
