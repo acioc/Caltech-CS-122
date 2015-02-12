@@ -947,6 +947,7 @@ relational_expr returns [Expression e]
       | LESS_EQUAL { cmpType = CompareOperator.Type.LESS_OR_EQUAL;    } )
       e2=additive_expr { e = new CompareOperator(cmpType, e, e2); }
     )
+  | IS ( NOT { invert = true; } )? NULL { e = new IsNullOperator(e, invert); }
   | (
       ( NOT { invert = true; } )?
       (
