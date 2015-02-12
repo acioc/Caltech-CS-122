@@ -299,6 +299,10 @@ public class SelectivityEstimator {
             	// We get our max and min values
             	Object minVal = colStats.getMinValue();
             	Object maxVal = colStats.getMaxValue();
+            	// We ensure the operations below can be performed
+            	if ((minVal == null) || (maxVal == null)) {
+            		return selectivity;
+            	}
             	// We check if our value is less than the min
                 Object diff1 = ArithmeticOperator.evalObjects(
                         ArithmeticOperator.Type.SUBTRACT, value, minVal);
@@ -339,6 +343,10 @@ public class SelectivityEstimator {
             	// We get our max and min values
             	Object minVal = colStats.getMinValue();
             	Object maxVal = colStats.getMaxValue();
+            	// We ensure the operations below can be performed
+            	if ((minVal == null) || (maxVal == null)) {
+            		return selectivity;
+            	}
             	// We check if our value is less than the min
                 Object diff1 = ArithmeticOperator.evalObjects(
                         ArithmeticOperator.Type.SUBTRACT, value, minVal);
