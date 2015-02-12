@@ -146,18 +146,42 @@ public class SelectivityEstimator {
         Schema exprSchema, ArrayList<ColumnStats> stats) {
 
         float selectivity = 1.0f;
-
+        float selectivityPa;
+        float selectivityPb;
         switch (bool.getType()) {
         case AND_EXPR:
-            // TODO:  Compute selectivity of AND expression.
+        	// P(a AND b) = P(a) * P(b)
+        	selectivityPa = estimateSelectivity(
+                bool.getTerm(0), 
+                exprSchema,
+                stats);
+            selectivityPb = estimateSelectivity(
+            	bool.getTerm(0), 
+            	exprSchema,
+            	stats);
+            selectivity = selectivityPa * selectivityPb;
             break;
 
         case OR_EXPR:
-            // TODO:  Compute selectivity of OR expression.
+        	// P(a OR b) = 1 - P(not A AND not b) = 1 - (1 - P(a)) * (1 - P(b))
+        	selectivityPa = estimateSelectivity(
+            	bool.getTerm(0), 
+            	exprSchema,
+            	stats);
+        	selectivityPb = estimateSelectivity(
+                bool.getTerm(0), 
+                exprSchema,
+                stats);
+        	selectivity = 1 - (1 - selectivityPa) * (1 - selectivityPb);
             break;
 
         case NOT_EXPR:
-            // TODO:  Compute selectivity of NOT expression.
+        	// P(not A) = 1 - P (a)
+        	selectivityPa = estimateSelectivity(
+        		bool.getTerm(0), 
+        		exprSchema, 
+        		stats);
+        	selectivity = 1 - selectivityPa;
             break;
 
         default:
