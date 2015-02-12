@@ -29,6 +29,21 @@ public class PerformanceCounters {
     private static Logger logger = Logger.getLogger(PerformanceCounters.class);
 
 
+    public static final String STORAGE_LARGE_SEEKS = "storage.largeSeeks";
+
+
+    public static final String STORAGE_PAGES_READ = "storage.pagesRead";
+
+
+    public static final String STORAGE_PAGES_WRITTEN = "storage.pagesWritten";
+
+
+    public static final String STORAGE_BYTES_READ = "storage.bytesRead";
+
+
+    public static final String STORAGE_BYTES_WRITTEN = "storage.bytesWritten";
+
+
     private static ConcurrentHashMap<String, AtomicInteger> counters =
         new ConcurrentHashMap<String, AtomicInteger>();
 
@@ -37,8 +52,10 @@ public class PerformanceCounters {
         // Do this in two steps so that we can try to avoid allocating an
         // AtomicInteger unless it looks like we need to.
         AtomicInteger counter = counters.get(counterName);
-        if (counter == null)
-            counter = counters.putIfAbsent(counterName, new AtomicInteger());
+        if (counter == null) {
+            counters.putIfAbsent(counterName, new AtomicInteger());
+            counter = counters.get(counterName);
+        }
 
         return counter;
     }
