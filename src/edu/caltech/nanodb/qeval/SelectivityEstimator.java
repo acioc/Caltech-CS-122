@@ -262,19 +262,27 @@ public class SelectivityEstimator {
         SQLDataType sqlType = colInfo.getType().getBaseType();
         ColumnStats colStats = stats.get(colIndex);
 
-        Object value = literalValue.evaluate();
-
+        Object value = literalValue.evaluate();      
+        
         switch (compType) {
         case EQUALS:
         case NOT_EQUALS:
             // Compute the equality value.  Then, if inequality, invert the
             // result.
-
-            // TODO:  Compute the selectivity.  Note that the ColumnStats type
-            //        will return special values to indicate "unknown" stats;
-            //        your code should detect when this is the case, and fall
-            //        back on the default selectivity.
-
+        	int numUnique = colStats.getNumUniqueValues();
+        	
+        	// We fall back to default if necessary
+        	if (numUnique == -1) {
+        		return selectivity;
+        	}
+        	// We compute the selectivity
+        	selectivity = 1 / numUnique;
+        	
+        	// We invert this if necessary
+        	if (compType == CompareOperator.Type.NOT_EQUALS) {
+        		selectivity = 1 - selectivity;
+        	}
+        	
             break;
 
         case GREATER_OR_EQUAL:
@@ -287,10 +295,32 @@ public class SelectivityEstimator {
 
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
-
-                // TODO:  Compute the selectivity.  The if-condition ensures
-                //        that you will only compute selectivities if the type
-                //        supports it, and if there are valid stats.
+            	
+            	// We get our max and min values
+            	Object minVal = colStats.getMinValue();
+            	Object maxVal = colStats.getMaxValue();
+            	// We check if our value is less than the min
+                Object diff1 = ArithmeticOperator.evalObjects(
+                        ArithmeticOperator.Type.SUBTRACT, value, minVal);
+                float valLessMin = TypeConverter.getFloatValue(diff1);
+                // We check if our value is greater than the max
+                Object diff2 = ArithmeticOperator.evalObjects(
+                        ArithmeticOperator.Type.SUBTRACT, value, maxVal);
+                float valGreaterMax = TypeConverter.getFloatValue(diff2);
+                // We follow the pattern as shown in class
+            	if (valLessMin < 0.0) {
+            		selectivity = 1;
+            	}
+            	else if (valGreaterMax > 0.0) {
+            		selectivity = 0;
+            	}
+            	else {
+            		selectivity = computeRatio(value, maxVal, minVal, maxVal);
+            	}
+            	// We invert if we had LESS_THAN
+            	if (compType == CompareOperator.Type.LESS_THAN) {
+            		selectivity = 1 - selectivity;
+            	}
             }
 
             break;
@@ -305,9 +335,32 @@ public class SelectivityEstimator {
 
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
-
-                // TODO:  Compute the selectivity.  Watch out for cut-and-paste
-                //        bugs...
+            	
+            	// We get our max and min values
+            	Object minVal = colStats.getMinValue();
+            	Object maxVal = colStats.getMaxValue();
+            	// We check if our value is less than the min
+                Object diff1 = ArithmeticOperator.evalObjects(
+                        ArithmeticOperator.Type.SUBTRACT, value, minVal);
+                float valLessMin = TypeConverter.getFloatValue(diff1);
+                // We check if our value is greater than the max
+                Object diff2 = ArithmeticOperator.evalObjects(
+                        ArithmeticOperator.Type.SUBTRACT, value, maxVal);
+                float valGreaterMax = TypeConverter.getFloatValue(diff2);
+                // We follow the pattern as shown in class
+            	if (valLessMin < 0.0) {
+            		selectivity = 0;
+            	}
+            	else if (valGreaterMax > 0.0) {
+            		selectivity = 1;
+            	}
+            	else {
+            		selectivity = computeRatio(minVal, value, minVal, maxVal);
+            	}
+            	// We invert if we had GREATER_THAN
+            	if (compType == CompareOperator.Type.GREATER_THAN) {
+            		selectivity = 1 - selectivity;
+            	}
             }
 
             break;
