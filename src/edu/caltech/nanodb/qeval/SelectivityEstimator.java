@@ -144,7 +144,7 @@ public class SelectivityEstimator {
      */
     public static float estimateBoolOperSelectivity(BooleanOperator bool,
         Schema exprSchema, ArrayList<ColumnStats> stats) {
-
+    	// TODO: CHECK IF THIS IS DONE CORRECTLY 
         float selectivity = 1.0f;
         float selectivityPa;
         float selectivityPb;
