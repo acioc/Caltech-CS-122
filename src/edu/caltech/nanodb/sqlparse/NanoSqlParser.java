@@ -1059,6 +1059,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 			case HAVING:
 			case IN:
 			case INNER:
+			case IS:
 			case JOIN:
 			case LEFT:
 			case LIKE:
@@ -3556,6 +3557,31 @@ public NanoSqlParser(ParserSharedInputState state) {
 				}
 				break;
 			}
+			case IS:
+			{
+				match(IS);
+				{
+				switch ( LA(1)) {
+				case NOT:
+				{
+					match(NOT);
+					invert = true;
+					break;
+				}
+				case NULL:
+				{
+					break;
+				}
+				default:
+				{
+					throw new NoViableAltException(LT(1), getFilename());
+				}
+				}
+				}
+				match(NULL);
+				e = new IsNullOperator(e, invert);
+				break;
+			}
 			case BETWEEN:
 			case IN:
 			case LIKE:
@@ -3746,7 +3772,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=mult_expr();
 			{
-			_loop183:
+			_loop184:
 			do {
 				if ((LA(1)==MINUS||LA(1)==PLUS)) {
 					{
@@ -3773,7 +3799,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e = new ArithmeticOperator(mathType, e, e2);
 				}
 				else {
-					break _loop183;
+					break _loop184;
 				}
 				
 			} while (true);
@@ -3802,7 +3828,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=unary_op_expr();
 			{
-			_loop187:
+			_loop188:
 			do {
 				if ((LA(1)==STAR||LA(1)==SLASH||LA(1)==PERCENT)) {
 					{
@@ -3835,7 +3861,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e = new ArithmeticOperator(mathType, e, e2);
 				}
 				else {
-					break _loop187;
+					break _loop188;
 				}
 				
 			} while (true);
@@ -4081,7 +4107,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e=expression();
 					args.add(e);
 					{
-					_loop198:
+					_loop199:
 					do {
 						if ((LA(1)==COMMA)) {
 							match(COMMA);
@@ -4089,7 +4115,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 							args.add(e);
 						}
 						else {
-							break _loop198;
+							break _loop199;
 						}
 						
 					} while (true);
@@ -4302,12 +4328,12 @@ public NanoSqlParser(ParserSharedInputState state) {
 	}
 	public static final BitSet _tokenSet_1 = new BitSet(mk_tokenSet_1());
 	private static final long[] mk_tokenSet_2() {
-		long[] data = { 7924670614867029250L, -306244771414766784L, 510L, 0L, 0L, 0L};
+		long[] data = { 7924952089843739906L, -306244771414766784L, 510L, 0L, 0L, 0L};
 		return data;
 	}
 	public static final BitSet _tokenSet_2 = new BitSet(mk_tokenSet_2());
 	private static final long[] mk_tokenSet_3() {
-		long[] data = { 7348209793844129026L, -900719924400355264L, 510L, 0L, 0L, 0L};
+		long[] data = { 7348491268820839682L, -900719924400355264L, 510L, 0L, 0L, 0L};
 		return data;
 	}
 	public static final BitSet _tokenSet_3 = new BitSet(mk_tokenSet_3());
@@ -4392,17 +4418,17 @@ public NanoSqlParser(ParserSharedInputState state) {
 	}
 	public static final BitSet _tokenSet_19 = new BitSet(mk_tokenSet_19());
 	private static final long[] mk_tokenSet_20() {
-		long[] data = { 7330195395334647042L, 8322652112454420544L, 62L, 0L, 0L, 0L};
+		long[] data = { 7330476870311357698L, 8322652112454420544L, 62L, 0L, 0L, 0L};
 		return data;
 	}
 	public static final BitSet _tokenSet_20 = new BitSet(mk_tokenSet_20());
 	private static final long[] mk_tokenSet_21() {
-		long[] data = { 7348209793844129026L, 8322652112454420544L, 126L, 0L, 0L, 0L};
+		long[] data = { 7348491268820839682L, 8322652112454420544L, 126L, 0L, 0L, 0L};
 		return data;
 	}
 	public static final BitSet _tokenSet_21 = new BitSet(mk_tokenSet_21());
 	private static final long[] mk_tokenSet_22() {
-		long[] data = { 7348209793844129026L, -882705525890873280L, 510L, 0L, 0L, 0L};
+		long[] data = { 7348491268820839682L, -882705525890873280L, 510L, 0L, 0L, 0L};
 		return data;
 	}
 	public static final BitSet _tokenSet_22 = new BitSet(mk_tokenSet_22());

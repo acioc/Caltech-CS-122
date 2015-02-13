@@ -389,8 +389,16 @@ public class StorageManager {
             // Buffer manager didn't have it.  Read the page directly from
             // the file, then add it to the buffer manager.
             dbPage = new DBPage(bufferManager, dbFile, pageNo);
-            fileManager.loadPage(dbFile, pageNo, dbPage.getPageData(), create);
-            bufferManager.addPage(dbPage);
+            try {
+                fileManager.loadPage(dbFile, pageNo, dbPage.getPageData(), create);
+                bufferManager.addPage(dbPage);
+            }
+            catch (IOException e) {
+                // Make sure to release the DBPage's buffer, or else we will
+                // have a resource leak...
+                dbPage.invalidate();
+                throw e;
+            }
         }
 
         return dbPage;

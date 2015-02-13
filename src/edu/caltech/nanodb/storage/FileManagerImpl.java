@@ -9,6 +9,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import edu.caltech.nanodb.server.performance.PerformanceCounters;
+
 
 /**
  * The File Manager provides unbuffered, low-level operations for working with
@@ -34,10 +36,33 @@ public class FileManagerImpl implements FileManager {
 
 
     /**
+     * The threshold for what will count as a "large seek" within a single
+     * file.  The units on this value is 512-byte sectors.  A value of 500 is
+     * probably a bit low, since tracks on modern hard disks will almost
+     * certainly contain over a hundred sectors.
+     */
+    public static final int LARGE_SEEK_THRESHOLD = 500;
+
+
+    /**
      * The base directory that the file-manager should use for creating and
      * opening files.
      */
     private File baseDir;
+
+
+    /**
+     * The DBFile object of the file that was accessed most recently.  Used
+     * for recording performance metrics regarding disk IOs.
+     */
+    private DBFile lastFileAccessed;
+
+
+    /**
+     * The page number of the file that was accessed most recently.  Used
+     * for recording performance metrics regarding disk IOs.
+     */
+    private int lastPageNoAccessed;
 
 
     /**
@@ -57,6 +82,34 @@ public class FileManagerImpl implements FileManager {
         this.baseDir = baseDir;
     }
 
+
+    // Update our file-IO performance counters
+    void updateFileIOPerfStats(DBFile dbFile, int pageNo, boolean read,
+                               int bufSize) {
+        if (lastFileAccessed == null || !dbFile.equals(lastFileAccessed)) {
+            PerformanceCounters.inc(PerformanceCounters.STORAGE_LARGE_SEEKS);
+        }
+        else {
+            // Compute the "number of sectors difference" between the last
+            // page we accessed and the current page we are accessing.  This
+            // is obviously a guess, since we don't know the physical file
+            // layout, or the physical sector size (it could be 4KiB too).
+            int diff = dbFile.getPageSize() * (pageNo - lastPageNoAccessed);
+            diff /= 512;
+
+            if (Math.abs(diff) > LARGE_SEEK_THRESHOLD)
+                PerformanceCounters.inc(PerformanceCounters.STORAGE_LARGE_SEEKS);
+        }
+
+        PerformanceCounters.inc(read ? PerformanceCounters.STORAGE_PAGES_READ :
+            PerformanceCounters.STORAGE_PAGES_WRITTEN);
+
+        PerformanceCounters.add(read ? PerformanceCounters.STORAGE_BYTES_READ :
+            PerformanceCounters.STORAGE_BYTES_WRITTEN, bufSize);
+
+        lastFileAccessed = dbFile;
+        lastPageNoAccessed = pageNo;
+    }
 
 
     /**
@@ -171,6 +224,9 @@ public class FileManagerImpl implements FileManager {
                 " from the specified DBFile page-size");
         }
 
+        // Update our file-IO performance counters
+        updateFileIOPerfStats(dbFile, pageNo, /* read */ true, buffer.length);
+
         long pageStart = getPageStart(dbFile, pageNo);
 
         RandomAccessFile fileContents = dbFile.getFileContents();
@@ -237,6 +293,9 @@ public class FileManagerImpl implements FileManager {
             throw new IllegalArgumentException("Buffer has a different size" +
                 " from the specified DBFile page-size");
         }
+
+        // Update our file-IO performance counters
+        updateFileIOPerfStats(dbFile, pageNo, /* read */ false, buffer.length);
 
         long pageStart = getPageStart(dbFile, pageNo);
 

@@ -1,6 +1,7 @@
 package edu.caltech.nanodb.storage;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,13 +14,14 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.client.SessionState;
+
 import edu.caltech.nanodb.expressions.TypeCastException;
+
 import edu.caltech.nanodb.server.properties.PropertyHandler;
 import edu.caltech.nanodb.server.properties.PropertyRegistry;
 import edu.caltech.nanodb.server.properties.ReadOnlyPropertyException;
 import edu.caltech.nanodb.server.properties.UnrecognizedPropertyException;
-
-import edu.caltech.nanodb.client.SessionState;
 
 
 /**
@@ -50,6 +52,39 @@ public class BufferManager {
 
     /** The default page-cache policy is LRU. */
     public static final String DEFAULT_PAGECACHE_POLICY = "lru";
+
+
+    private static class DBPageID {
+        private File file;
+
+        private int pageNo;
+
+        public DBPageID(File file, int pageNo) {
+            this.file = file;
+            this.pageNo = pageNo;
+        }
+
+        public DBPageID(DBPage dbPage) {
+            this(dbPage.getDBFile().getDataFile(), dbPage.getPageNo());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof DBPageID) {
+                DBPageID other = (DBPageID) obj;
+                return file.equals(other.file) && pageNo == other.pageNo;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 17;
+            hash = hash * 37 + file.hashCode();
+            hash = hash * 37 + pageNo;
+            return hash;
+        }
+    }
 
 
     /**
@@ -171,11 +206,11 @@ public class BufferManager {
 
 
     /**
-     * This collection maps session IDs to the pages that each session has
-     * pinned, so that we can forcibly unpin pages used by a given session
-     * when the session is done with the current command.
+     * This collection maps session IDs to the files and pages that each
+     * session has pinned, so that we can forcibly unpin pages used by a
+     * given session when the session is done with the current command.
      */
-    private HashMap<Integer, HashMap<String, SessionPinCount>> sessionPinCounts;
+    private HashMap<Integer, HashMap<DBPageID, SessionPinCount>> sessionPinCounts;
 
 
     /**
@@ -219,7 +254,7 @@ public class BufferManager {
         totalBytesCached = 0;
         allocatedBuffers = new HashSet<Integer>();
 
-        sessionPinCounts = new HashMap<Integer, HashMap<String, SessionPinCount>>();
+        sessionPinCounts = new HashMap<Integer, HashMap<DBPageID, SessionPinCount>>();
 
         // Register properties that the Buffer Manager exposes.
         PropertyRegistry.getInstance().registerProperties(
@@ -301,9 +336,13 @@ public class BufferManager {
 
 
     /**
+     * This method attempts to allocate a buffer of the specified size,
+     * possibly evicting some existing buffers in order to make space.
      *
-     * @param size
-     * @return
+     * @param size the size of the buffer to allocate
+     *
+     * @return an array of bytes, of the specified size
+     *
      * @throws IOException if a dirty page must be evicted from the buffer
      *         manager, and an IO error occurred while writing the page to
      *         persistent storage.
@@ -397,18 +436,18 @@ public class BufferManager {
         int sessionID = SessionState.get().getSessionID();
 
         // Retrieve the set of pages pinned by the current session.
-        HashMap<String, SessionPinCount> pinnedBySession =
+        HashMap<DBPageID, SessionPinCount> pinnedBySession =
             sessionPinCounts.get(sessionID);
         if (pinnedBySession == null) {
-            pinnedBySession = new HashMap<String, SessionPinCount>();
+            pinnedBySession = new HashMap<DBPageID, SessionPinCount>();
             sessionPinCounts.put(sessionID, pinnedBySession);
         }
 
         // Find the session-specific pin-count for the data page.
-        SessionPinCount spc = pinnedBySession.get(dbPage.getDBFile().hashCode() + " " + dbPage.getPageNo());
+        SessionPinCount spc = pinnedBySession.get(new DBPageID(dbPage));
         if (spc == null) {
             spc = new SessionPinCount(dbPage);
-            pinnedBySession.put(dbPage.getDBFile().hashCode() + " " + dbPage.getPageNo(), spc);
+            pinnedBySession.put(new DBPageID(dbPage), spc);
         }
 
         // Finally, increment the session's pin-count on this page.
@@ -421,13 +460,14 @@ public class BufferManager {
      * does not actually unpin the page; it is presumed that the page will be
      * unpinned after this call.
      *
-     * @param dbPage
+     * @param dbPage the page that was unpinned
      */
     public void recordPageUnpinned(DBPage dbPage) {
         int sessionID = SessionState.get().getSessionID();
 
         // Retrieve the set of pages pinned by the current session.
-        HashMap<String, SessionPinCount> pinnedBySession =
+
+        HashMap<DBPageID, SessionPinCount> pinnedBySession =
             sessionPinCounts.get(sessionID);
         if (pinnedBySession == null) {
             logger.error(String.format("DBPage %d is being unpinned by " +
@@ -437,7 +477,10 @@ public class BufferManager {
         }
 
         // Find the session-specific pin-count for the data page.
-        SessionPinCount spc = pinnedBySession.get(dbPage.getDBFile().hashCode() + " " + dbPage.getPageNo());
+
+        DBPageID pageID = new DBPageID(dbPage);
+        SessionPinCount spc = pinnedBySession.get(pageID);
+
         if (spc == null) {
             logger.error(String.format("DBPage %d is being unpinned by " +
                 "session %d, but we have no record of it having been pinned!",
@@ -450,7 +493,7 @@ public class BufferManager {
 
         // If the pin-count went to zero, remove the SessionPinCount object.
         if (spc.pinCount == 0) {
-            pinnedBySession.remove(dbPage.getPageNo());
+            pinnedBySession.remove(pageID);
 
             // If the set of pages pinned by the current session is now empty,
             // remove the set of pages.
@@ -470,7 +513,8 @@ public class BufferManager {
         int sessionID = SessionState.get().getSessionID();
 
         // Retrieve the set of pages pinned by the current session.
-        HashMap<String, SessionPinCount> pinnedBySession =
+
+        HashMap<DBPageID, SessionPinCount> pinnedBySession =
             sessionPinCounts.get(sessionID);
 
         if (pinnedBySession == null) {
@@ -504,16 +548,19 @@ public class BufferManager {
             throw new IllegalArgumentException("dbPage cannot be null");
 
         int pageNo = dbPage.getPageNo();
+        DBPageID pageID = new DBPageID(dbPage);
         if (dbPage.getPinCount() > 0) {
             logger.warn(String.format("DBPage %d is being invalidated, but " +
                 "it has a pin-count of %d", pageNo, dbPage.getPinCount()));
         }
 
         for (int sessionID : sessionPinCounts.keySet()) {
-            HashMap<String, SessionPinCount> pinnedBySession =
+
+            HashMap<DBPageID, SessionPinCount> pinnedBySession =
                 sessionPinCounts.get(sessionID);
 
-            SessionPinCount spc = pinnedBySession.remove(dbPage.getDBFile().hashCode() + " " + dbPage.getPageNo());
+            SessionPinCount spc = pinnedBySession.remove(pageID);
+
             if (spc != null) {
                 logger.warn(String.format("DBPage %d is being invalidated, " +
                     "but session %d has pinned it %d times", pageNo, sessionID,

@@ -38,7 +38,7 @@ public class FunctionDirectory {
         initBuiltinFunctions();
     }
 
-    
+
     private void initBuiltinFunctions() {
         // These are all standard (i.e. non-aggregate) functions:
         addFunction("ABS", Abs.class);
@@ -64,6 +64,9 @@ public class FunctionDirectory {
         addFunction("SQRT", Sqrt.class);
         addFunction("TAN", Tan.class);
 
+        addFunction("PERF_COUNTER", ReadPerfCounter.class);
+        addFunction("RESET_PERF_COUNTER", ResetPerfCounter.class);
+
         // These are the aggregate functions:
         addFunction("AVG", Avg.class);
         addFunction("AVG#DISTINCT", AvgDistinct.class);
@@ -84,7 +87,7 @@ public class FunctionDirectory {
      * converted to uppercase before updating the directory.  If the directory
      * already contains a function with the specified name, an exception is
      * reported.
-     * 
+     *
      * @param funcName the name of the function
      * @param impl the {@link Function} object that implements this function
      *
