@@ -198,40 +198,40 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         
         // If we have a predicate, we multiply by this value
         if (predicate != null) {
-        	// We use a selectivity estimator if necessary
-        	float selValue = SelectivityEstimator.estimateSelectivity(
-        			predicate, 
-        			schema, 
-        			stats);
-        	
-        	// Anti-joins will have the opposite of our estimated selectivity
+            // We use a selectivity estimator if necessary
+            float selValue = SelectivityEstimator.estimateSelectivity(
+                predicate, 
+                schema, 
+                stats);
+            
+            // Anti-joins will have the opposite of our estimated selectivity
             if (joinType == JoinType.ANTIJOIN || 
-            		joinType == JoinType.SEMIJOIN) {
-            	selValue = 1 - selValue;
+                    joinType == JoinType.SEMIJOIN) {
+                selValue = 1 - selValue;
             }
             totalTuples *= selValue;
         }
         // Outer joins require extra nodes for their bounds
         if (joinType == JoinType.LEFT_OUTER) {
-        	totalTuples += lChildCost.numTuples;
+            totalTuples += lChildCost.numTuples;
         }
         else if (joinType == JoinType.RIGHT_OUTER) {
-        	totalTuples += rChildCost.numTuples;
+            totalTuples += rChildCost.numTuples;
         }
         
         cost = new PlanCost(
-        		// We have our total number of tuples
-        		totalTuples,
-        		// Our overall tuple size is now the size of the two
-        		// tuples added together
-        		lChildCost.tupleSize + rChildCost.tupleSize,
-        		// Our CPU cost is the cost of going through every tuple
-        		// on the right child for every tuple on the left
-        		// and for going through every left child tuple
-        		lChildCost.numTuples * rChildCost.cpuCost + lChildCost.cpuCost,
-                // Our block cost is the cost of going through the blocks
-                // in the two children
-                lChildCost.numBlockIOs + rChildCost.numBlockIOs);
+            // We have our total number of tuples
+            totalTuples,
+            // Our overall tuple size is now the size of the two
+            // tuples added together
+            lChildCost.tupleSize + rChildCost.tupleSize,
+            // Our CPU cost is the cost of going through every tuple
+            // on the right child for every tuple on the left
+            // and for going through every left child tuple
+            lChildCost.numTuples * rChildCost.cpuCost + lChildCost.cpuCost,
+            // Our block cost is the cost of going through the blocks
+            // in the two children
+            lChildCost.numBlockIOs + rChildCost.numBlockIOs);
     }
 
 
