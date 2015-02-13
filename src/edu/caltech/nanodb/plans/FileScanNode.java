@@ -181,21 +181,21 @@ public class FileScanNode extends SelectNode {
         
         // If we have a predicate, we multiply by this value
         if (predicate != null) {
-        	// We use a selectivity estimator if necessary
-        	totalTuples *= SelectivityEstimator.estimateSelectivity(
-        			predicate, 
-        			schema, 
-        			stats);
+            // We use a selectivity estimator if necessary
+            totalTuples *= SelectivityEstimator.estimateSelectivity(
+                predicate, 
+                schema, 
+                stats);
         }
         cost = new PlanCost(
-        		// The number of tuples we will produce
-        		totalTuples, 
-        		// The size of a tuple
-        		tableStats.avgTupleSize, 
-        		// The total number of tuples (1 tuple = 1 CPU cost)
-        		totalTuples, 
-        		// numBlockIOs 
-        		tableStats.numDataPages);
+            // The number of tuples we will produce
+            totalTuples, 
+            // The size of a tuple
+            tableStats.avgTupleSize, 
+            // The total number of tuples (1 tuple = 1 CPU cost)
+            totalTuples, 
+            // numBlockIOs 
+            tableStats.numDataPages);
 
         // TODO:  We should also update the table statistics based on the
         //        predicate, but that's too complicated, so we'll leave them

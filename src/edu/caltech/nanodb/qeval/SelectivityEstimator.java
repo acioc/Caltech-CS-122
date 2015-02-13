@@ -145,41 +145,38 @@ public class SelectivityEstimator {
     public static float estimateBoolOperSelectivity(BooleanOperator bool,
         Schema exprSchema, ArrayList<ColumnStats> stats) {
 
-    	float selectivity = 1.0f;
-        int totalTerms;
+        float selectivity = 1.0f;
+
         switch (bool.getType()) {
         case AND_EXPR:
-        	// P(a AND b) = P(a) * P(b)
-        	totalTerms = bool.getNumTerms();
-        	for (int i = 0; i < totalTerms; i++) {
-        		selectivity *= estimateSelectivity(
-        			bool.getTerm(i), 
+            // P(a AND b) = P(a) * P(b)
+            for (int i = 0; i < bool.getNumTerms(); i++) {
+                selectivity *= estimateSelectivity(
+                    bool.getTerm(i), 
                     exprSchema,
                     stats);
-        	}
+            }
             break;
 
         case OR_EXPR:
-        	// P(a OR b) = 1 - P(not A AND not b) = 1 - (1 - P(a)) * (1 - P(b))
-        	totalTerms = bool.getNumTerms();
-        	
-        	float tempNotAndSelect = 1;
-        	for (int i = 0; i < totalTerms; i++) {
-        		tempNotAndSelect *= (1 - estimateSelectivity(
-        			bool.getTerm(i), 
+            // P(a OR b) = 1 - P(not A AND not b) = 1 - (1 - P(a)) * (1 - P(b))
+            float tempNotAndSelect = 1;
+            for (int i = 0; i < bool.getNumTerms(); i++) {
+                tempNotAndSelect *= (1 - estimateSelectivity(
+                    bool.getTerm(i), 
                     exprSchema,
                     stats));
-        	}
-        	selectivity = 1 - tempNotAndSelect;
+            }
+            selectivity = 1 - tempNotAndSelect;
             break;
 
         case NOT_EXPR:
-        	// P(not A) = 1 - P (a)
-        	float selNotA = estimateSelectivity(
-        		bool.getTerm(0), 
-        		exprSchema, 
-        		stats);
-        	selectivity = 1 - selNotA;
+            // P(not A) = 1 - P (a)
+            float selNotA = estimateSelectivity(
+                bool.getTerm(0), 
+                exprSchema, 
+                stats);
+            selectivity = 1 - selNotA;
             break;
 
         default:
@@ -291,20 +288,20 @@ public class SelectivityEstimator {
         case NOT_EQUALS:
             // Compute the equality value.  Then, if inequality, invert the
             // result.
-        	int numUnique = colStats.getNumUniqueValues();
-        	
-        	// We fall back to default if necessary
-        	if (numUnique == -1) {
-        		return selectivity;
-        	}
-        	// We compute the selectivity
-        	selectivity = 1 / numUnique;
-        	
-        	// We invert this if necessary
-        	if (compType == CompareOperator.Type.NOT_EQUALS) {
-        		selectivity = 1 - selectivity;
-        	}
-        	
+            int numUnique = colStats.getNumUniqueValues();
+            
+            // We fall back to default if necessary
+            if (numUnique == -1) {
+                return selectivity;
+            }
+            // We compute the selectivity
+            selectivity = 1 / numUnique;
+            
+            // We invert this if necessary
+            if (compType == CompareOperator.Type.NOT_EQUALS) {
+                selectivity = 1 - selectivity;
+            }
+            
             break;
 
         case GREATER_OR_EQUAL:
@@ -317,36 +314,36 @@ public class SelectivityEstimator {
 
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
-            	
-            	// We get our max and min values
-            	Object minVal = colStats.getMinValue();
-            	Object maxVal = colStats.getMaxValue();
-            	// We ensure the operations below can be performed
-            	if ((minVal == null) || (maxVal == null)) {
-            		return selectivity;
-            	}
-            	// We check if our value is less than the min
+                
+                // We get our max and min values
+                Object minVal = colStats.getMinValue();
+                Object maxVal = colStats.getMaxValue();
+                // We ensure the operations below can be performed
+                if ((minVal == null) || (maxVal == null)) {
+                    return selectivity;
+                }
+                // We check if our value is less than the min
                 Object diff1 = ArithmeticOperator.evalObjects(
-                        ArithmeticOperator.Type.SUBTRACT, value, minVal);
+                    ArithmeticOperator.Type.SUBTRACT, value, minVal);
                 float valLessMin = TypeConverter.getFloatValue(diff1);
                 // We check if our value is greater than the max
                 Object diff2 = ArithmeticOperator.evalObjects(
-                        ArithmeticOperator.Type.SUBTRACT, value, maxVal);
+                    ArithmeticOperator.Type.SUBTRACT, value, maxVal);
                 float valGreaterMax = TypeConverter.getFloatValue(diff2);
                 // We follow the pattern as shown in class
-            	if (valLessMin < 0.0) {
-            		selectivity = 1;
-            	}
-            	else if (valGreaterMax > 0.0) {
-            		selectivity = 0;
-            	}
-            	else {
-            		selectivity = computeRatio(value, maxVal, minVal, maxVal);
-            	}
-            	// We invert if we had LESS_THAN
-            	if (compType == CompareOperator.Type.LESS_THAN) {
-            		selectivity = 1 - selectivity;
-            	}
+                if (valLessMin < 0.0) {
+                    selectivity = 1;
+                }
+                else if (valGreaterMax > 0.0) {
+                    selectivity = 0;
+                }
+                else {
+                    selectivity = computeRatio(value, maxVal, minVal, maxVal);
+                }
+                // We invert if we had LESS_THAN
+                if (compType == CompareOperator.Type.LESS_THAN) {
+                    selectivity = 1 - selectivity;
+                }
             }
 
             break;
@@ -361,36 +358,36 @@ public class SelectivityEstimator {
 
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
-            	
-            	// We get our max and min values
-            	Object minVal = colStats.getMinValue();
-            	Object maxVal = colStats.getMaxValue();
-            	// We ensure the operations below can be performed
-            	if ((minVal == null) || (maxVal == null)) {
-            		return selectivity;
-            	}
-            	// We check if our value is less than the min
+                
+                // We get our max and min values
+                Object minVal = colStats.getMinValue();
+                Object maxVal = colStats.getMaxValue();
+                // We ensure the operations below can be performed
+                if ((minVal == null) || (maxVal == null)) {
+                    return selectivity;
+                }
+                // We check if our value is less than the min
                 Object diff1 = ArithmeticOperator.evalObjects(
-                        ArithmeticOperator.Type.SUBTRACT, value, minVal);
+                    ArithmeticOperator.Type.SUBTRACT, value, minVal);
                 float valLessMin = TypeConverter.getFloatValue(diff1);
                 // We check if our value is greater than the max
                 Object diff2 = ArithmeticOperator.evalObjects(
-                        ArithmeticOperator.Type.SUBTRACT, value, maxVal);
+                    ArithmeticOperator.Type.SUBTRACT, value, maxVal);
                 float valGreaterMax = TypeConverter.getFloatValue(diff2);
                 // We follow the pattern as shown in class
-            	if (valLessMin < 0.0) {
-            		selectivity = 0;
-            	}
-            	else if (valGreaterMax > 0.0) {
-            		selectivity = 1;
-            	}
-            	else {
-            		selectivity = computeRatio(minVal, value, minVal, maxVal);
-            	}
-            	// We invert if we had GREATER_THAN
-            	if (compType == CompareOperator.Type.GREATER_THAN) {
-            		selectivity = 1 - selectivity;
-            	}
+                if (valLessMin < 0.0) {
+                    selectivity = 0;
+                }
+                else if (valGreaterMax > 0.0) {
+                    selectivity = 1;
+                }
+                else {
+                    selectivity = computeRatio(minVal, value, minVal, maxVal);
+                }
+                // We invert if we had GREATER_THAN
+                if (compType == CompareOperator.Type.GREATER_THAN) {
+                    selectivity = 1 - selectivity;
+                }
             }
 
             break;
@@ -443,22 +440,22 @@ public class SelectivityEstimator {
         case NOT_EQUALS:
             // Compute the equality value.  Then, if inequality, invert the
             // result.
-        	int numUniqueOne = colOneStats.getNumUniqueValues();
-        	int numUniqueTwo = colTwoStats.getNumUniqueValues();
-        	// We fall back to default if necessary
-        	if ((numUniqueOne == -1) || (numUniqueTwo == -1)) {
-        		return selectivity;
-        	}
-        	// We compute the selectivity
-        	selectivity = (1 / Math.max(numUniqueOne, numUniqueTwo));
-        	
-        	// We invert this if necessary
-        	if (compType == CompareOperator.Type.NOT_EQUALS) {
-        		selectivity = 1 - selectivity;
-        	}
-        	
+            int numUniqueOne = colOneStats.getNumUniqueValues();
+            int numUniqueTwo = colTwoStats.getNumUniqueValues();
+            // We fall back to default if necessary
+            if ((numUniqueOne == -1) || (numUniqueTwo == -1)) {
+                return selectivity;
+            }
+            // We compute the selectivity
+            selectivity = (1 / Math.max(numUniqueOne, numUniqueTwo));
+            
+            // We invert this if necessary
+            if (compType == CompareOperator.Type.NOT_EQUALS) {
+                selectivity = 1 - selectivity;
+            }
+            
             break;
-        	
+            
         default:
             // Shouldn't be any other comparison types...
             assert false : "Unexpected compare-operator type:  " + compType;

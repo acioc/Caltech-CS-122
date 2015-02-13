@@ -127,22 +127,22 @@ public class SimpleFilterNode extends SelectNode {
             float totalTuples = lCost.numTuples;
             // If we have a predicate, we multiply by this value
             if (predicate != null) {
-            	// We use a selectivity estimator if necessary
-            	totalTuples *= SelectivityEstimator.estimateSelectivity(
-            			predicate, 
-            			schema, 
-            			stats);
+                // We use a selectivity estimator if necessary
+                totalTuples *= SelectivityEstimator.estimateSelectivity(
+                    predicate, 
+                    schema, 
+                    stats);
             }
             cost = new PlanCost(
-            		// The number of tuples we will produce
-            		totalTuples, 
-            		// The size of a tuple
-            		lCost.tupleSize, 
-            		// The total number of tuples (1 tuple = 1 CPU cost)
-            		// Filtering in memory is an O(N) operation
-            		totalTuples + lCost.numTuples, 
-            		// numBlockIOs 
-            		lCost.numBlockIOs);
+                // The number of tuples we will produce
+                totalTuples, 
+                // The size of a tuple
+                lCost.tupleSize, 
+                // The total number of tuples (1 tuple = 1 CPU cost)
+                // Filtering in memory is an O(N) operation
+                totalTuples + lCost.numTuples, 
+                // numBlockIOs 
+                lCost.numBlockIOs);
         }
     }
 
