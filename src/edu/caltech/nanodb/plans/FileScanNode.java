@@ -178,7 +178,7 @@ public class FileScanNode extends SelectNode {
 
         // Compute the cost of a filescan
         float totalTuples = tableStats.numTuples;
-        
+        float totalCost = totalTuples;
         // If we have a predicate, we multiply by this value
         if (predicate != null) {
             // We use a selectivity estimator if necessary
@@ -193,7 +193,7 @@ public class FileScanNode extends SelectNode {
             // The size of a tuple
             tableStats.avgTupleSize, 
             // The total number of tuples (1 tuple = 1 CPU cost)
-            totalTuples, 
+            totalCost, 
             // numBlockIOs 
             tableStats.numDataPages);
 
