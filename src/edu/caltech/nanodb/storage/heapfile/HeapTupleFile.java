@@ -6,7 +6,12 @@ import java.io.IOException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
+import edu.caltech.nanodb.qeval.ColumnStats;
+import edu.caltech.nanodb.qeval.ColumnStatsCollector;
+import edu.caltech.nanodb.relations.ColumnType;
+import edu.caltech.nanodb.relations.SQLDataType;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.qeval.TableStats;
@@ -511,7 +516,53 @@ public class HeapTupleFile implements TupleFile {
     @Override
     public void analyze() throws IOException {
         // TODO!
-        throw new UnsupportedOperationException("Not yet implemented!");
+        HeaderPage hp = new HeaderPage();
+        DataPage d = new DataPage();
+        DBPage hPage = storageManager.loadDBPage(dbFile, 0);
+        DBPage curPage;
+        //int numCols = stats.getAllColumnStats().size();
+        int st = hp.OFFSET_SCHEMA_START;
+        int numCols = hPage.readUnsignedByte(st);
+        ArrayList<ColumnType> types = new ArrayList<ColumnType>(numCols);
+        ArrayList<ColumnStatsCollector> ar = new ArrayList<ColumnStatsCollector>(numCols);
+        for(int i = 0; i < numCols; i++) {
+            types.add(schema.getColumnInfo(i).getType());
+            ar.add(new ColumnStatsCollector(types.get(i).getBaseType()));
+        }
+        int numTuples = 0;
+        int totalSize = 0;
+        float avgSize = 0;
+        int numPages = dbFile.getNumPages() - 1;
+        int pageNum = 1;
+        int curPos = 0;
+        int endPos = 1;
+        while(pageNum < numPages) {
+            curPage = storageManager.loadDBPage(dbFile, pageNum);
+            curPos = d.getTupleDataStart(curPage);
+            endPos = d.getTupleDataEnd(curPage);
+            int curCol = 0;
+            while(curPos < endPos) {
+                int tupLen = d.getTupleLength(curPage, curPos);
+                numTuples++;
+                totalSize += tupLen;
+                while(curCol < numCols) {
+                    ar.get(curCol).addValue(curPage.readObject(curPos+curCol,
+                            types.get(curCol)));
+                    curCol++;
+                }
+                curPos = d.getNextPage(curPage);
+                curCol = 0;
+                //getNextPage gives index of next tuple
+            }
+            pageNum++;
+        }
+        avgSize = (float) totalSize / numTuples;
+        ArrayList<ColumnStats> cStats = new ArrayList<ColumnStats>(numCols);
+        for(ColumnStatsCollector c : ar)
+            cStats.add(c.getColumnStats());
+        TableStats tStats = new TableStats(numPages, numTuples, avgSize, cStats);
+        stats = tStats;
+        heapFileManager.saveMetadata(this);
     }
 
     @Override
