@@ -144,44 +144,42 @@ public class SelectivityEstimator {
      */
     public static float estimateBoolOperSelectivity(BooleanOperator bool,
         Schema exprSchema, ArrayList<ColumnStats> stats) {
-    	// TODO: CHECK IF THIS IS DONE CORRECTLY 
-        float selectivity = 1.0f;
-        float selectivityPa;
-        float selectivityPb;
+
+    	float selectivity = 1.0f;
+        int totalTerms;
         switch (bool.getType()) {
         case AND_EXPR:
         	// P(a AND b) = P(a) * P(b)
-        	selectivityPa = estimateSelectivity(
-                bool.getTerm(0), 
-                exprSchema,
-                stats);
-            selectivityPb = estimateSelectivity(
-            	bool.getTerm(0), 
-            	exprSchema,
-            	stats);
-            selectivity = selectivityPa * selectivityPb;
+        	totalTerms = bool.getNumTerms();
+        	for (int i = 0; i < totalTerms; i++) {
+        		selectivity *= estimateSelectivity(
+        			bool.getTerm(i), 
+                    exprSchema,
+                    stats);
+        	}
             break;
 
         case OR_EXPR:
         	// P(a OR b) = 1 - P(not A AND not b) = 1 - (1 - P(a)) * (1 - P(b))
-        	selectivityPa = estimateSelectivity(
-            	bool.getTerm(0), 
-            	exprSchema,
-            	stats);
-        	selectivityPb = estimateSelectivity(
-                bool.getTerm(0), 
-                exprSchema,
-                stats);
-        	selectivity = 1 - (1 - selectivityPa) * (1 - selectivityPb);
+        	totalTerms = bool.getNumTerms();
+        	
+        	float tempNotAndSelect = 1;
+        	for (int i = 0; i < totalTerms; i++) {
+        		tempNotAndSelect *= (1 - estimateSelectivity(
+        			bool.getTerm(i), 
+                    exprSchema,
+                    stats));
+        	}
+        	selectivity = 1 - tempNotAndSelect;
             break;
 
         case NOT_EXPR:
         	// P(not A) = 1 - P (a)
-        	selectivityPa = estimateSelectivity(
+        	float selNotA = estimateSelectivity(
         		bool.getTerm(0), 
         		exprSchema, 
         		stats);
-        	selectivity = 1 - selectivityPa;
+        	selectivity = 1 - selNotA;
             break;
 
         default:
@@ -452,8 +450,7 @@ public class SelectivityEstimator {
         		return selectivity;
         	}
         	// We compute the selectivity
-        	// TODO: CHECK IF THIS IS CORRECT
-        	selectivity = (1 / numUniqueOne) * (1 / numUniqueTwo);
+        	selectivity = (1 / Math.max(numUniqueOne, numUniqueTwo));
         	
         	// We invert this if necessary
         	if (compType == CompareOperator.Type.NOT_EQUALS) {
