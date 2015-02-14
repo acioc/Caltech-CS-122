@@ -31,7 +31,7 @@ import javax.xml.crypto.Data;
 /**
  * This class implements the TupleFile interface for heap files.
  */
-public class HeapTupleFile implements TupleFile {
+public class etsHeapTupleFile implements TupleFile {
 
     /** A logging object for reporting anything interesting that happens. */
     private static Logger logger = Logger.getLogger(HeapTupleFile.class);
