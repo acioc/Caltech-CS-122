@@ -218,7 +218,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         else if (joinType == JoinType.RIGHT_OUTER) {
             totalTuples += rChildCost.numTuples;
         }
-        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ " + lChildCost.cpuCost +", " + rChildCost.cpuCost);
         
         cost = new PlanCost(
             // We have our total number of tuples
