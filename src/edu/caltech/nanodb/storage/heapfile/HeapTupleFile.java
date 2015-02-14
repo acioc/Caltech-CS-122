@@ -10,8 +10,6 @@ import java.util.ArrayList;
 
 import edu.caltech.nanodb.qeval.ColumnStats;
 import edu.caltech.nanodb.qeval.ColumnStatsCollector;
-import edu.caltech.nanodb.relations.ColumnType;
-import edu.caltech.nanodb.relations.SQLDataType;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.qeval.TableStats;
