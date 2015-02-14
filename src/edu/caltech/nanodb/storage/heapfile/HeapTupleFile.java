@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
-import edu.caltech.nanodb.qeval.ColumnStats;
 import edu.caltech.nanodb.qeval.ColumnStatsCollector;
 import edu.caltech.nanodb.relations.ColumnType;
 import edu.caltech.nanodb.relations.SQLDataType;
@@ -557,12 +556,12 @@ public class HeapTupleFile implements TupleFile {
             pageNum++;
         }
         avgSize = (float) totalSize / numTuples;
-        ArrayList<ColumnStats> cStats = new ArrayList<ColumnStats>(numCols);
-        for(ColumnStatsCollector c : ar)
-            cStats.add(c.getColumnStats());
-        TableStats tStats = new TableStats(numPages, numTuples, avgSize, cStats);
-        stats = tStats;
-        heapFileManager.saveMetadata(this);
+        ArrayList<ColumStats> stats = new ArrayList<ColumStats>(numCols);
+
+
+
+
+        throw new UnsupportedOperationException("Not yet implemented!");
     }
 
     @Override

@@ -47,7 +47,7 @@ public class TableStats {
     public TableStats(int numDataPages, int numTuples, float avgTupleSize,
                       ArrayList<ColumnStats> columnStats) {
         if (columnStats == null)
-            throw new IllegalArgumentException("columnStats cannot be null");
+            throw new IllegalArgumentException("columngit Stats cannot be null");
 
         this.numDataPages = numDataPages;
         this.numTuples = numTuples;
