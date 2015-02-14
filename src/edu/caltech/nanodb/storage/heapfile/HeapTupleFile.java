@@ -516,42 +516,36 @@ public class HeapTupleFile implements TupleFile {
     @Override
     public void analyze() throws IOException {
         // TODO!
-        HeaderPage hp = new HeaderPage();
-        DataPage d = new DataPage();
+
         DBPage hPage = storageManager.loadDBPage(dbFile, 0);
-        DBPage curPage;
         //int numCols = stats.getAllColumnStats().size();
-        int st = hp.OFFSET_SCHEMA_START;
-        int numCols = hPage.readUnsignedByte(st);
+        int st = HeaderPage.OFFSET_SCHEMA_START;
+        int numCols = schema.numColumns();
         ArrayList<ColumnType> types = new ArrayList<ColumnType>(numCols);
         ArrayList<ColumnStatsCollector> ar = new ArrayList<ColumnStatsCollector>(numCols);
         for(int i = 0; i < numCols; i++) {
             types.add(schema.getColumnInfo(i).getType());
             ar.add(new ColumnStatsCollector(types.get(i).getBaseType()));
         }
-        int numTuples = 0;
         int totalSize = 0;
-        float avgSize = 0;
+        int numTuples = 0;
+        float avgSize;
         int numPages = dbFile.getNumPages() - 1;
         int pageNum = 1;
-        int curPos = 0;
-        int endPos = 1;
-        while(pageNum < numPages) {
-            curPage = storageManager.loadDBPage(dbFile, pageNum);
-            curPos = d.getTupleDataStart(curPage);
-            endPos = d.getTupleDataEnd(curPage);
-            int curCol = 0;
-            while(curPos < endPos) {
-                int tupLen = d.getTupleLength(curPage, curPos);
+        while(pageNum <= numPages) {
+            DBPage curPage = storageManager.loadDBPage(dbFile, pageNum);
+            int numEntries = DataPage.getNumSlots(curPage);
+            totalSize += DataPage.getTupleDataEnd(curPage) - DataPage.getTupleDataStart(curPage);
+
+            for(int curSlot = 0; curSlot < numEntries; curSlot++) {
+                int offset = DataPage.getSlotValue(curPage, curSlot);
+                if(offset == 0) continue;
+
                 numTuples++;
-                totalSize += tupLen;
-                while(curCol < numCols) {
-                    ar.get(curCol).addValue(curPage.readObject(curPos+curCol,
-                            types.get(curCol)));
-                    curCol++;
+                HeapFilePageTuple curTuple = new HeapFilePageTuple(schema, curPage, curSlot, offset);
+                for(int i = 0; i < numCols; i++) {
+                    ar.get(i).addValue(curTuple.getColumnValue(i));
                 }
-                curPos = d.getNextPage(curPage);
-                curCol = 0;
                 //getNextPage gives index of next tuple
             }
             pageNum++;
@@ -563,6 +557,7 @@ public class HeapTupleFile implements TupleFile {
         TableStats tStats = new TableStats(numPages, numTuples, avgSize, cStats);
         stats = tStats;
         heapFileManager.saveMetadata(this);
+
     }
 
     @Override
