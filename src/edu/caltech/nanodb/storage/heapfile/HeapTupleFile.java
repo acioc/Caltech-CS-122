@@ -517,41 +517,54 @@ public class HeapTupleFile implements TupleFile {
     public void analyze() throws IOException {
 
         int numCols = schema.numColumns();
-        ArrayList<ColumnType> types = new ArrayList<ColumnType>(numCols);
+
+        //Create a list with a ColumnStatsCollector object for each column in the table
         ArrayList<ColumnStatsCollector> ar = new ArrayList<ColumnStatsCollector>(numCols);
         for(int i = 0; i < numCols; i++) {
-            types.add(schema.getColumnInfo(i).getType());
-            ar.add(new ColumnStatsCollector(types.get(i).getBaseType()));
+            ar.add(new ColumnStatsCollector(schema.getColumnInfo(i).getType().getBaseType()));
         }
+
         int totalSize = 0;
         int numTuples = 0;
         float avgSize;
+
+        //get the number of data pages from the dbFile
         int numPages = dbFile.getNumPages() - 1;
         int pageNum = 1;
+
+        // For each page, process all data on the page
         while(pageNum <= numPages) {
             DBPage curPage = storageManager.loadDBPage(dbFile, pageNum);
+
+            //calculate the number of tuples on the current page and the space taken up by all tuples
             int numEntries = DataPage.getNumSlots(curPage);
             totalSize += DataPage.getTupleDataEnd(curPage) - DataPage.getTupleDataStart(curPage);
 
+            // for each slot on the page, if the slot is non-empty, process its associated tuple
             for(int curSlot = 0; curSlot < numEntries; curSlot++) {
+                // offset corresponds to the location of the tuple in memory and is zero if there is no tuple
                 int offset = DataPage.getSlotValue(curPage, curSlot);
                 if(offset == 0) continue;
 
                 numTuples++;
                 HeapFilePageTuple curTuple = new HeapFilePageTuple(schema, curPage, curSlot, offset);
+
+                //for each column in the current tuple, add its data to the associated ColumnStatsCollector
                 for(int i = 0; i < numCols; i++) {
                     ar.get(i).addValue(curTuple.getColumnValue(i));
                 }
-                //getNextPage gives index of next tuple
             }
+            // once all slots are processed, move to the next page
             pageNum++;
         }
+        // computes the average byte size of tuples from the total length of all tuples
         avgSize = (float) totalSize / numTuples;
+        // create an array with the processed statistics for each column
         ArrayList<ColumnStats> cStats = new ArrayList<ColumnStats>(numCols);
         for(ColumnStatsCollector c : ar)
             cStats.add(c.getColumnStats());
-        TableStats tStats = new TableStats(numPages, numTuples, avgSize, cStats);
-        stats = tStats;
+        //update the statistics on the header page
+        stats= new TableStats(numPages, numTuples, avgSize, cStats);
         heapFileManager.saveMetadata(this);
     }
 
