@@ -140,7 +140,8 @@ public class SimpleFilterNode extends SelectNode {
                 lCost.tupleSize, 
                 // The total number of tuples (1 tuple = 1 CPU cost)
                 // Filtering in memory is an O(N) operation
-                totalTuples + lCost.numTuples, 
+                // Total cost also includes the cost of the child
+                totalTuples + lCost.numTuples + lCost.cpuCost,
                 // numBlockIOs 
                 lCost.numBlockIOs);
         }

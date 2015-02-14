@@ -218,6 +218,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         else if (joinType == JoinType.RIGHT_OUTER) {
             totalTuples += rChildCost.numTuples;
         }
+        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ " + lChildCost.cpuCost +", " + rChildCost.cpuCost);
         
         cost = new PlanCost(
             // We have our total number of tuples
@@ -227,8 +228,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             lChildCost.tupleSize + rChildCost.tupleSize,
             // Our CPU cost is the cost of going through every tuple
             // on the right child for every tuple on the left
-            // and for going through every left child tuple
-            lChildCost.numTuples * rChildCost.cpuCost + lChildCost.cpuCost,
+            // and for computing both tables
+                lChildCost.numTuples * rChildCost.numTuples +  lChildCost.cpuCost + rChildCost.cpuCost,
             // Our block cost is the cost of going through the blocks
             // in the two children
             lChildCost.numBlockIOs + rChildCost.numBlockIOs);
