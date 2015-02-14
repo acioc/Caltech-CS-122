@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
+import edu.caltech.nanodb.qeval.ColumnStats;
 import edu.caltech.nanodb.qeval.ColumnStatsCollector;
 import edu.caltech.nanodb.relations.ColumnType;
 import edu.caltech.nanodb.relations.SQLDataType;
@@ -31,7 +32,7 @@ import javax.xml.crypto.Data;
 /**
  * This class implements the TupleFile interface for heap files.
  */
-public class etsHeapTupleFile implements TupleFile {
+public class HeapTupleFile implements TupleFile {
 
     /** A logging object for reporting anything interesting that happens. */
     private static Logger logger = Logger.getLogger(HeapTupleFile.class);
@@ -514,11 +515,7 @@ public class etsHeapTupleFile implements TupleFile {
 
     @Override
     public void analyze() throws IOException {
-        // TODO!
 
-        DBPage hPage = storageManager.loadDBPage(dbFile, 0);
-        //int numCols = stats.getAllColumnStats().size();
-        int st = HeaderPage.OFFSET_SCHEMA_START;
         int numCols = schema.numColumns();
         ArrayList<ColumnType> types = new ArrayList<ColumnType>(numCols);
         ArrayList<ColumnStatsCollector> ar = new ArrayList<ColumnStatsCollector>(numCols);
