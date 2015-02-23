@@ -10,15 +10,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.PredicateUtils;
+import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.Expression;
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -232,7 +232,10 @@ public class CostBasedJoinPlanner implements Planner {
      * This helper method pulls the essential details for join optimization
      * out of a <tt>FROM</tt> clause.
      *
-     * TODO:  FILL IN DETAILS.
+     * It determines the clause type. If the clause is a leaf it adds that clause
+     * to the Array List of leaf clauses. Otherwise it adds conjuncts (if necessary)
+     * to the hash set of conjunctions and recursively calls the function on the clause's
+     * children.
      *
      * @param fromClause the from-clause to collect details from
      *
@@ -242,7 +245,40 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private void collectDetails(FromClause fromClause,
         HashSet<Expression> conjuncts, ArrayList<FromClause> leafFromClauses) {
-        // TODO:  IMPLEMENT
+        switch(fromClause.getClauseType()) {
+
+            // handling base tables (leaf)
+            case BASE_TABLE:
+                leafFromClauses.add(fromClause);
+
+                break;
+
+            // handling select subqueries (also a leaf)
+            case SELECT_SUBQUERY:
+                leafFromClauses.add(fromClause);
+
+                break;
+
+            // handling join expressions (not necessarily a leaf)
+            case JOIN_EXPR:
+                if(fromClause.isOuterJoin()) {
+                    leafFromClauses.add(fromClause);
+                }
+                else {
+                    Expression onExpr = fromClause.getOnExpression();
+                    if(onExpr != null) {
+                        PredicateUtils.collectConjuncts(onExpr, conjuncts);
+                    }
+                    collectDetails(fromClause.getLeftChild(), conjuncts, leafFromClauses);
+                    collectDetails(fromClause.getRightChild(), conjuncts, leafFromClauses);
+                }
+
+                break;
+
+            default:
+                throw new UnsupportedOperationException(
+                        "Given FROM clause not supported");
+        }
     }
 
 
@@ -292,7 +328,10 @@ public class CostBasedJoinPlanner implements Planner {
 
     /**
      * Constructs a plan tree for evaluating the specified from-clause.
-     * TODO:  COMPLETE THE DOCUMENTATION
+     *
+     * Handles different types of leaves in the from clause. We handle base tables , select sub-queries,
+     * and join expressions.  Join expressions need to handle different conjuncts depending on what type of
+     * outer join is being performed.
      *
      * @param fromClause the select nodes that need to be joined.
      *
@@ -316,17 +355,111 @@ public class CostBasedJoinPlanner implements Planner {
         Collection<Expression> conjuncts, HashSet<Expression> leafConjuncts)
         throws IOException {
 
-        // TODO:  IMPLEMENT.
-        //        If you apply any conjuncts then make sure to add them to the
-        //        leafConjuncts collection.
-        //
-        //        Don't forget that all from-clauses can specify an alias.
-        //
-        //        Concentrate on properly handling cases other than outer
-        //        joins first, then focus on outer joins once you have the
-        //        typical cases supported.
+        PlanNode finalPlan;
+        switch(fromClause.getClauseType()) {
+            // handle the base table
+            case BASE_TABLE:
+                // Get a simple select so we can prepare it (to obtain a schema)
+                SelectNode tempNode = makeSimpleSelect(
+                        fromClause.getTableName(),
+                        null,
+                        null);
+                tempNode.prepare();
+                // Use findExprsUsingSchemas to get the appropriate conjuncts for our simple select
+                Collection<Expression> tempConjuncts = new HashSet<Expression>();
+                PredicateUtils.findExprsUsingSchemas(
+                    conjuncts,
+                    false,
+                    tempConjuncts,
+                    tempNode.getSchema());
+                // Actually get our simple select using the correct predicate
+                Expression predicate = PredicateUtils.makePredicate(tempConjuncts);
+                finalPlan = makeSimpleSelect(fromClause.getTableName(), predicate, null);
 
-        return null;
+                break;
+
+            // handle derived tables\
+            // the subquery has it's own unique set of conjuncts so we don't need
+            //   to handle them here
+            case SELECT_SUBQUERY:
+                finalPlan = makePlan(fromClause.getSelectClause(), null);
+                break;
+
+            // handle outer joins
+            case JOIN_EXPR:
+                if (fromClause.isOuterJoin() == false) {
+                    throw new UnsupportedOperationException(
+                            "All JOIN leaf clases must be outer joins");
+                }
+
+                FromClause lChild = fromClause.getLeftChild();
+                FromClause rChild = fromClause.getRightChild();
+                JoinComponent joinComponent;
+                Collection<Expression> joinConjuncts = new HashSet<Expression>();
+                Expression joinPredicate;
+                JoinComponent joinComponentLeft;
+                JoinComponent joinComponentRight;
+
+                // We handle right outer joins
+                if (!fromClause.hasOuterJoinOnLeft()) {
+                    // We prepare the right child's schema
+                    joinComponent = makeJoinPlan(rChild, null);
+                    joinComponent.joinPlan.prepare();
+                    PredicateUtils.findExprsUsingSchemas(
+                            conjuncts,
+                            false,
+                            joinConjuncts,
+                            joinComponent.joinPlan.getSchema());
+                    // Handle the two children
+                    joinComponentLeft = makeJoinPlan(lChild, null);
+                    joinComponentRight = makeJoinPlan(rChild, joinConjuncts);
+                }
+                // We handle left outer joins
+                else if(!fromClause.hasOuterJoinOnRight()) {
+                    // We prepare the left child's schema
+                    joinComponent = makeJoinPlan(lChild, null);
+                    joinComponent.joinPlan.prepare();
+                    PredicateUtils.findExprsUsingSchemas(
+                            conjuncts,
+                            false,
+                            joinConjuncts,
+                            joinComponent.joinPlan.getSchema());
+                    // Handle the two children
+                    joinComponentLeft = makeJoinPlan(lChild, joinConjuncts);
+                    joinComponentRight = makeJoinPlan(rChild, null);
+                }
+                // Handle full outer joins
+                else {
+                    // Handle the two children
+                    joinComponentLeft = makeJoinPlan(lChild, null);
+                    joinComponentRight = makeJoinPlan(rChild, null);
+                }
+                // We obtain our predicates
+                joinPredicate = PredicateUtils.makePredicate(joinConjuncts);
+
+                // Join the left and right components
+                finalPlan = new NestedLoopsJoinNode(
+                        joinComponentLeft.joinPlan,
+                        joinComponentRight.joinPlan,
+                        fromClause.getJoinType(),
+                        joinPredicate);
+
+                // We use a project node to avoid duplicate column names
+                ArrayList<SelectValue> prepSelVal =
+                        fromClause.getPreparedSelectValues();
+                if (prepSelVal != null) {
+                    finalPlan = new ProjectNode(finalPlan, prepSelVal);
+                }
+                break;
+
+            default:
+                throw new UnsupportedOperationException(
+                        "Incorrect leaf type passed (not a leaf)");
+
+        }
+
+        finalPlan.prepare();
+        return finalPlan;
     }
 
 
