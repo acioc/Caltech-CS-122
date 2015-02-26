@@ -210,6 +210,7 @@ public class CostBasedJoinPlanner implements Planner {
             finalPlan = new SortNode(finalPlan, orderByExprs);
         }
 
+        // We return our plan
         finalPlan.prepare();
         return finalPlan;
     }
@@ -224,11 +225,8 @@ public class CostBasedJoinPlanner implements Planner {
      */
     public void checkFromClause(FromClause fromClause, AggregateProcessor processor) {
         switch (fromClause.getClauseType()) {
-
-            case BASE_TABLE:
-                break;
-
-            case JOIN_EXPR:
+        	
+        	case JOIN_EXPR:
                 if(fromClause.getOnExpression() != null) {
                     fromClause.getOnExpression().traverse(processor);
                     if(processor.hasAggregate()){
@@ -242,6 +240,7 @@ public class CostBasedJoinPlanner implements Planner {
                     }
                 }
                 break;
+                
             default:
                 break;
         }
@@ -331,11 +330,6 @@ public class CostBasedJoinPlanner implements Planner {
 
             // handling base tables (leaf)
             case BASE_TABLE:
-                leafFromClauses.add(fromClause);
-
-                break;
-
-            // handling select subqueries (also a leaf)
             case SELECT_SUBQUERY:
                 leafFromClauses.add(fromClause);
 
@@ -347,7 +341,7 @@ public class CostBasedJoinPlanner implements Planner {
                     leafFromClauses.add(fromClause);
                 }
                 else {
-                    Expression onExpr = fromClause.getOnExpression();
+                    Expression onExpr = fromClause.getPreparedJoinExpr();
                     if(onExpr != null) {
                         PredicateUtils.collectConjuncts(onExpr, conjuncts);
                     }
@@ -479,7 +473,7 @@ public class CostBasedJoinPlanner implements Planner {
                 Expression joinPredicate;
                 JoinComponent joinComponentLeft;
                 JoinComponent joinComponentRight;
-
+                
                 // We handle right outer joins
                 if (!fromClause.hasOuterJoinOnLeft()) {
                     // We prepare the right child's schema
@@ -643,8 +637,7 @@ public class CostBasedJoinPlanner implements Planner {
                         PlanNode newPlanNode = new NestedLoopsJoinNode(
                                 leftNode,
                                 rightNode,
-                                // TODO: FIGURE OUT THE CORRECT THING HERE...
-                                JoinType.FULL_OUTER,
+                                JoinType.INNER,
                                 newExpressions);
                         newPlanNode.prepare();
 
