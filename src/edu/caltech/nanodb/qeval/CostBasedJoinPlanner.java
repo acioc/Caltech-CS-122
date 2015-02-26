@@ -473,7 +473,7 @@ public class CostBasedJoinPlanner implements Planner {
                 Expression joinPredicate;
                 JoinComponent joinComponentLeft;
                 JoinComponent joinComponentRight;
-                
+                // TODO: FIX? Is the first makeJoinPlan correct?
                 // We handle right outer joins
                 if (!fromClause.hasOuterJoinOnLeft()) {
                     // We prepare the right child's schema
