@@ -472,80 +472,71 @@ public class CostBasedJoinPlanner implements Planner {
                         fromClause.getTableName(), 
                         predicate, 
                         null);
-
                 break;
 
-            // handle derived tables\
+            // handle derived tables
             // the subquery has it's own unique set of conjuncts so we don't
             // need to handle them here
             case SELECT_SUBQUERY:
+                /*
+                PredicateUtils.findExprsUsingSchemas(
+                        conjuncts,
+                        false,
+                        leafConjuncts,
+                        fromClause.getSelectClause().computeSchema(
+                        	storageManager.getTableManager()));
+                JoinComponent finalSelect = makeJoinPlan(
+                		fromClause.getSelectClause().getFromClause(), 
+                		leafConjuncts);
+                finalPlan = finalSelect.joinPlan;
+                		
+                */
                 finalPlan = makePlan(fromClause.getSelectClause(), null);
                 break;
 
             // handle outer joins
             case JOIN_EXPR:
-                if (fromClause.isOuterJoin() == false) {
+                if (!fromClause.isOuterJoin()) {
                     throw new UnsupportedOperationException(
                             "All JOIN leaf clases must be outer joins");
                 }
 
                 FromClause lChild = fromClause.getLeftChild();
                 FromClause rChild = fromClause.getRightChild();
-                JoinComponent joinComponent;
-                Expression joinPredicate;
                 JoinComponent joinComponentLeft;
                 JoinComponent joinComponentRight;
-                // TODO: FIX? Is the first makeJoinPlan correct?
+                HashSet<Expression> leftLeafConjuncts = null;
+                HashSet<Expression> rightLeafConjuncts = null;
                 // We handle right outer joins
                 if (!fromClause.hasOuterJoinOnLeft()) {
                     // We prepare the right child's schema
-                    joinComponent = makeJoinPlan(rChild, null);
-                    joinComponent.joinPlan.prepare();
                     PredicateUtils.findExprsUsingSchemas(
                             conjuncts,
                             false,
                             leafConjuncts,
-                            joinComponent.joinPlan.getSchema());
-                    // Handle the two children
-                    joinComponentLeft = makeJoinPlan(lChild, null);
-                    joinComponentRight = makeJoinPlan(rChild, leafConjuncts);
+                            fromClause.getRightChild().getPreparedSchema());
+                    rightLeafConjuncts = leafConjuncts;
                 }
                 // We handle left outer joins
                 else if(!fromClause.hasOuterJoinOnRight()) {
                     // We prepare the left child's schema
-                    joinComponent = makeJoinPlan(lChild, null);
-                    joinComponent.joinPlan.prepare();
                     PredicateUtils.findExprsUsingSchemas(
                             conjuncts,
                             false,
                             leafConjuncts,
-                            joinComponent.joinPlan.getSchema());
-                    // Handle the two children
-                    joinComponentLeft = makeJoinPlan(lChild, leafConjuncts);
-                    joinComponentRight = makeJoinPlan(rChild, null);
+                            fromClause.getLeftChild().getPreparedSchema());
+                    leftLeafConjuncts = leafConjuncts;
                 }
-                // Handle full outer joins
-                else {
-                    // Handle the two children
-                    joinComponentLeft = makeJoinPlan(lChild, null);
-                    joinComponentRight = makeJoinPlan(rChild, null);
-                }
-                // We obtain our predicates
-                joinPredicate = PredicateUtils.makePredicate(leafConjuncts);
-
+                // Handle the two children
+                joinComponentLeft = makeJoinPlan(lChild, leftLeafConjuncts);
+                joinComponentRight = makeJoinPlan(rChild, rightLeafConjuncts);
+                
                 // Join the left and right components
                 finalPlan = new NestedLoopsJoinNode(
                         joinComponentLeft.joinPlan,
                         joinComponentRight.joinPlan,
                         fromClause.getJoinType(),
-                        joinPredicate);
-
-                // We use a project node to avoid duplicate column names
-                ArrayList<SelectValue> prepSelVal =
-                        fromClause.getPreparedSelectValues();
-                if (prepSelVal != null) {
-                    finalPlan = new ProjectNode(finalPlan, prepSelVal);
-                }
+                        fromClause.getPreparedJoinExpr());
                 break;
 
             default:
@@ -554,6 +545,13 @@ public class CostBasedJoinPlanner implements Planner {
 
         }
 
+        // We use a project node to avoid duplicate column names
+        ArrayList<SelectValue> prepSelVal =
+                fromClause.getPreparedSelectValues();
+        if (prepSelVal != null) {
+            finalPlan = new ProjectNode(finalPlan, prepSelVal);
+        }
+        
         finalPlan.prepare();
         return finalPlan;
     }
