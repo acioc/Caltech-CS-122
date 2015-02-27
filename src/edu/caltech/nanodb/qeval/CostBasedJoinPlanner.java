@@ -214,6 +214,7 @@ public class CostBasedJoinPlanner implements Planner {
                     selClause.getSelectValues());
         }
 
+        
         // We deal with our order by expressions
         List<OrderByExpression> orderByExprs = selClause.getOrderByExprs();
         if (!orderByExprs.isEmpty()) {
@@ -617,20 +618,19 @@ public class CostBasedJoinPlanner implements Planner {
             HashMap<HashSet<PlanNode>, JoinComponent> nextJoinPlans =
                 new HashMap<HashSet<PlanNode>, JoinComponent>();
 
-            //        JOIN N + 1 LEAVES
+            // JOIN N + 1 LEAVES
             // For plan_n in JoinPlans_n
-            for(Map.Entry<HashSet<PlanNode>, 
-                    JoinComponent> entry : joinPlans.entrySet()) {
+            for(JoinComponent entry : joinPlans.values()) {
                 // For leaf in LeafPlans
                 for(JoinComponent leaf : leafComponents) {
                     // If leaf already appears in plan_n...
-                    if(entry.getKey().contains(leaf)) {
+                    if(entry.leavesUsed.contains(leaf.joinPlan)) {
                         continue;
                     }
                     else {
                         // Obtain the correct conjuncts using our left 
                         // and right plans
-                        PlanNode leftNode = entry.getValue().joinPlan;
+                        PlanNode leftNode = entry.joinPlan;
                         PlanNode rightNode = leaf.joinPlan;
 
                         Collection<Expression> tempConjunctsLeft = 
@@ -660,30 +660,41 @@ public class CostBasedJoinPlanner implements Planner {
                         unusedConjucts.removeAll(tempConjunctsLeft);
                         HashSet<Expression> usedConjucts = 
                                 new HashSet<Expression>();
-                        // Find which conjuncts from unused conjuncts are 
-                        // applied to our theta join
-                        PredicateUtils.findExprsUsingSchemas(
-                                unusedConjucts,
-                                false,
-                                usedConjucts,
-                                leftNode.getSchema(),
-                                rightNode.getSchema()
-                        );
-                        // Get our correct predicates
-                        Expression newExpressions = 
-                                makePredicate(usedConjucts);
 
                         // Get the new plan by performing a theta join
                         PlanNode newPlanNode = new NestedLoopsJoinNode(
                                 leftNode,
                                 rightNode,
                                 JoinType.INNER,
-                                newExpressions);
+                                null);
                         newPlanNode.prepare();
 
+                        // Find which conjuncts from unused conjuncts are 
+                        // applied to our theta join
+                        PredicateUtils.findExprsUsingSchemas(
+                                unusedConjucts,
+                                false,
+                                usedConjucts,
+                                newPlanNode.getSchema()
+                        );
+                        
+                        // If we have predicates...
+                        if (!usedConjucts.isEmpty()) {
+                            // Get our correct predicates
+                            Expression newExpressions = 
+                                    makePredicate(usedConjucts);
+                            
+                        	newPlanNode = new NestedLoopsJoinNode(
+                                    leftNode,
+                                    rightNode,
+                                    JoinType.INNER,
+                                    newExpressions);
+                            newPlanNode.prepare();
+                        }
+                        
                         // Add the leaf to plan_n
                         HashSet<PlanNode> newLeaves = new HashSet<PlanNode>();
-                        newLeaves.addAll(entry.getKey());
+                        newLeaves.addAll(entry.leavesUsed);
                         newLeaves.add(rightNode);
 
                         // newCost = cost of the new plan
@@ -696,7 +707,6 @@ public class CostBasedJoinPlanner implements Planner {
                                 nextJoinPlans.get(newLeaves).joinPlan.getCost();
                             if (newCost.cpuCost < oldCost.cpuCost) {
                                // replace old plan with new plan
-                                nextJoinPlans.remove(newLeaves);
                                 JoinComponent newComponent = new JoinComponent(
                                         newPlanNode, 
                                         newLeaves, 
@@ -712,7 +722,6 @@ public class CostBasedJoinPlanner implements Planner {
                                     usedConjucts);
                             nextJoinPlans.put(newLeaves, newComponent);
                         }
-
                     }
                 }
             }
