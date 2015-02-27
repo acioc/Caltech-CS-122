@@ -300,7 +300,7 @@ public class SelectivityEstimator {
                 return selectivity;
             }
             // We compute the selectivity
-            selectivity = 1 / numUnique;
+            selectivity = 1 / (float) numUnique;
             
             // We invert this if necessary
             if (compType == CompareOperator.Type.NOT_EQUALS) {
@@ -456,7 +456,7 @@ public class SelectivityEstimator {
                 return selectivity;
             }
             // We compute the selectivity
-            selectivity = (1 / Math.max(numUniqueOne, numUniqueTwo));
+            selectivity = (1 / (float) Math.max(numUniqueOne, numUniqueTwo));
             
             // We invert this if necessary
             if (compType == CompareOperator.Type.NOT_EQUALS) {
