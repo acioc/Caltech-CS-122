@@ -655,7 +655,7 @@ public class CostBasedJoinPlanner implements Planner {
                         Collection<Expression> unusedConjucts = 
                                 new HashSet<Expression>();
                         unusedConjucts.addAll(conjuncts);
-
+                        
                         // Unused Conjuncts = AllConjuncts - SubplanConjuncts
                         unusedConjucts.removeAll(tempConjunctsLeft);
                         HashSet<Expression> usedConjucts = 
@@ -690,6 +690,9 @@ public class CostBasedJoinPlanner implements Planner {
                                     JoinType.INNER,
                                     newExpressions);
                             newPlanNode.prepare();
+                            
+                            // Make sure that our conjuncts filter upwards
+                            usedConjucts.addAll(tempConjunctsLeft);
                         }
                         
                         // Add the leaf to plan_n
