@@ -8,6 +8,7 @@ import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.*;
 import edu.caltech.nanodb.plans.*;
 import edu.caltech.nanodb.relations.JoinType;
+
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
@@ -478,20 +479,27 @@ public class CostBasedJoinPlanner implements Planner {
             // the subquery has it's own unique set of conjuncts so we don't
             // need to handle them here
             case SELECT_SUBQUERY:
-                /*
+                finalPlan = makePlan(fromClause.getSelectClause(), null);
                 PredicateUtils.findExprsUsingSchemas(
                         conjuncts,
                         false,
                         leafConjuncts,
-                        fromClause.getSelectClause().computeSchema(
-                        	storageManager.getTableManager()));
-                JoinComponent finalSelect = makeJoinPlan(
-                		fromClause.getSelectClause().getFromClause(), 
-                		leafConjuncts);
-                finalPlan = finalSelect.joinPlan;
-                		
-                */
-                finalPlan = makePlan(fromClause.getSelectClause(), null);
+                        finalPlan.getSchema());
+                // Actually get our simple select using the correct predicate
+                Expression selectPredicates = PredicateUtils.makePredicate(
+                        leafConjuncts);
+                if (selectPredicates != null) {
+                	finalPlan = PlanUtils.addPredicateToPlan(
+            			finalPlan, 
+            			selectPredicates);
+                }
+                // Rename if necessary 
+                if (fromClause.isRenamed()) {
+                	finalPlan = new RenameNode(
+                			finalPlan, 
+                			fromClause.getResultName());	
+                }
+                
                 break;
 
             // handle outer joins
