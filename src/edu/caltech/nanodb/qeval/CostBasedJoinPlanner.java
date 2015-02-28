@@ -171,11 +171,6 @@ public class CostBasedJoinPlanner implements Planner {
         PredicateUtils.collectConjuncts(
                 selClause.getWhereExpr(), 
                 extraConjuncts);
-        // THE LINE BELOW IS NOT NEEDED
-        // IT IS COMMENTED OUT SO WE CAN MAINTAIN IT FOR FUTURE CHANGES
-        /*PredicateUtils.collectConjuncts(
-                selClause.getHavingExpr(), 
-                extraConjuncts);*/
 
         // obtain the optimal join plan
         JoinComponent optimalComponent = makeJoinPlan(
@@ -649,6 +644,7 @@ public class CostBasedJoinPlanner implements Planner {
                                 false,
                                 tempConjunctsRight,
                                 rightNode.getSchema());
+                        
                         // SubplanConjuncts = 
                         //        LeftChildConjuncts U RightChildConjuncts
                         tempConjunctsLeft.addAll(tempConjunctsRight);
