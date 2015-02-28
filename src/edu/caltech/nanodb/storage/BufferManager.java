@@ -711,8 +711,6 @@ public class BufferManager {
     private void writeDirtyPages(List<DBPage> dirtyPages, boolean invalidate)
         throws IOException {
 
-        // Make sure that we follow the Write Ahead Logging Rule, by forcing
-        // the WAL out to disk for the maximum page-LSN of any of these pages.
         if (!dirtyPages.isEmpty()) {
             // Pass the observers a read-only version of the pages so they
             // can't change things.

@@ -3,10 +3,10 @@ package edu.caltech.nanodb.client;
 
 import java.io.IOException;
 
-import edu.caltech.nanodb.server.NanoDBServer;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.Command;
+import edu.caltech.nanodb.server.NanoDBServer;
 
 
 /**
@@ -15,9 +15,6 @@ import edu.caltech.nanodb.commands.Command;
  */
 public class ExclusiveClient extends InteractiveClient {
     private static Logger logger = Logger.getLogger(ExclusiveClient.class);
-
-
-    public static final boolean FLUSH_DATA_AFTER_CMD = true;
 
 
     private NanoDBServer server;
@@ -39,11 +36,6 @@ public class ExclusiveClient extends InteractiveClient {
 
     public void handleCommand(Command cmd) {
         server.doCommand(cmd, false);
-
-        /* TODO:  Re-enable?
-        if (FLUSH_DATA_AFTER_CMD)
-            StorageManager.getInstance().flushAllData();
-         */
     }
 
 

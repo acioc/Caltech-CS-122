@@ -31,6 +31,9 @@ public class NanoDBServer {
     private static Logger logger = Logger.getLogger(NanoDBServer.class);
 
 
+    public static final boolean FLUSH_DATA_AFTER_CMD = true;
+
+
     private StorageManager storageManager;
 
 
@@ -142,12 +145,13 @@ public class NanoDBServer {
         storageManager.getBufferManager().unpinAllSessionPages();
 
         // TODO:  Remove this to improve performance.
-        try {
-            storageManager.flushAllData();
-        }
-        catch (IOException e) {
-            logger.error("Post-command flush of all data threw an exception!",
-                e);
+        if (FLUSH_DATA_AFTER_CMD) {
+            try {
+                storageManager.flushAllData();
+            } catch (IOException e) {
+                logger.error("Post-command flush of all data threw an exception!",
+                    e);
+            }
         }
 
         return result;
