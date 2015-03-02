@@ -9,6 +9,7 @@ import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.TypeConverter;
 import edu.caltech.nanodb.relations.ColumnType;
+import edu.caltech.nanodb.storage.writeahead.LogSequenceNumber;
 
 
 /**
@@ -71,6 +72,16 @@ public class DBPage implements Pinnable {
     private boolean dirty;
 
 
+    /**
+     * For dirty pages, this field is set to the Log Sequence Number of the
+     * write-ahead log record corresponding to the most recent write to the
+     * page.  When the page is being flushed back to disk, the write-ahead log
+     * must be written to at least this point, or else the write-ahead logging
+     * rule will be violated.
+     */
+    private LogSequenceNumber pageLSN;
+
+
     /** The actual data for the table-page. */
     private byte[] pageData;
 
@@ -112,6 +123,7 @@ public class DBPage implements Pinnable {
         this.pageNo = pageNo;
         pinCount = 0;
         dirty = false;
+        pageLSN = null;
 
         // This operation could fail with an IOException, because more
         // space must be allocated to keep track of the original page data,
@@ -289,9 +301,22 @@ public class DBPage implements Pinnable {
             // page data since we don't need it anymore.
             bufferManager.releaseBuffer(oldPageData);
             oldPageData = null;
+
+            // Clear out the page-LSN value as well.
+            pageLSN = null;
         }
 
         this.dirty = dirty;
+    }
+
+
+    public LogSequenceNumber getPageLSN() {
+        return pageLSN;
+    }
+
+
+    public void setPageLSN(LogSequenceNumber lsn) {
+        pageLSN = lsn;
     }
 
 
@@ -1116,8 +1141,8 @@ public class DBPage implements Pinnable {
 
         int pageSize = dbFile.getPageSize();
         buf.append(String.format(
-            "DBPage[file=%s, pageNo=%d, pageSize=%d, dirty=%s",
-            dbFile, pageNo, pageSize, dirty));
+            "DBPage[file=%s, pageNo=%d, pageSize=%d, dirty=%s, pageLSN=%s",
+            dbFile, pageNo, pageSize, dirty, pageLSN));
 
         buf.append("\npageData =");
         for (int i = 0; i < pageSize; i++) {

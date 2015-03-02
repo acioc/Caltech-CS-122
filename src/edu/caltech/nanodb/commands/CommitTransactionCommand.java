@@ -2,6 +2,7 @@ package edu.caltech.nanodb.commands;
 
 
 import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.transactions.TransactionException;
 
 
 /**
@@ -17,7 +18,12 @@ public class CommitTransactionCommand extends Command {
     @Override
     public void execute(StorageManager storageManager)
         throws ExecutionException {
-
-        throw new ExecutionException("Not yet implemented!");
+        // Commit the transaction.
+        try {
+            storageManager.getTransactionManager().commitTransaction();
+        }
+        catch (TransactionException e) {
+            throw new ExecutionException(e);
+        }
     }
 }

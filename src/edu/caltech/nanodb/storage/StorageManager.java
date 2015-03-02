@@ -17,6 +17,7 @@ import edu.caltech.nanodb.server.properties.ReadOnlyPropertyException;
 import edu.caltech.nanodb.server.properties.UnrecognizedPropertyException;
 
 import edu.caltech.nanodb.storage.heapfile.HeapTupleFileManager;
+import edu.caltech.nanodb.transactions.TransactionManager;
 
 
 /**
@@ -164,6 +165,13 @@ public class StorageManager {
     private FileManager fileManager;
 
 
+    /**
+     * If transactions are enabled, this will be the singleton transaction
+     * manager instance; otherwise, it will be {@code null}.
+     */
+    private TransactionManager transactionManager;
+
+
     private TableManager tableManager;
 
 
@@ -223,6 +231,18 @@ public class StorageManager {
         tupleFileManagers.put(DBFileType.HEAP_TUPLE_FILE,
             new HeapTupleFileManager(this));
 
+        if (TransactionManager.isEnabled()) {
+            logger.info("Initializing transaction manager.");
+            transactionManager = new TransactionManager(this, bufferManager);
+
+            // This method opens the transaction-state file, performs any
+            // necessary recovery operations, and so forth.
+            transactionManager.initialize();
+        }
+        else {
+            logger.info("Transaction manager is disabled.");
+        }
+
         tableManager = new IndexedTableManager(this);
 
         EventDispatcher eventDispatcher = EventDispatcher.getInstance();
@@ -245,6 +265,9 @@ public class StorageManager {
             throw new IllegalStateException(
                 "Storage manager is not initialized.");
         }
+
+        if (transactionManager != null)
+            transactionManager.forceWAL();
 
         List<DBFile> dbFiles = bufferManager.removeAll();
         for (DBFile dbFile : dbFiles)
@@ -275,6 +298,11 @@ public class StorageManager {
 
     public BufferManager getBufferManager() {
         return bufferManager;
+    }
+
+
+    public TransactionManager getTransactionManager() {
+        return transactionManager;
     }
 
 
@@ -443,8 +471,8 @@ public class StorageManager {
      */
     public void logDBPageWrite(DBPage dbPage) throws IOException {
         // If the page is dirty, record its changes to the write-ahead log.
-        // if (transactionManager != null)
-        //     transactionManager.recordPageUpdate(dbPage);
+        if (transactionManager != null)
+            transactionManager.recordPageUpdate(dbPage);
     }
 
 

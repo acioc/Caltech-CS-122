@@ -2,6 +2,7 @@ package edu.caltech.nanodb.commands;
 
 
 import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.transactions.TransactionException;
 
 
 /**
@@ -17,6 +18,12 @@ public class RollbackTransactionCommand extends Command {
     @Override
     public void execute(StorageManager storageManager)
         throws ExecutionException {
-        throw new ExecutionException("Not yet implemented!");
+        // Roll back the transaction.
+        try {
+            storageManager.getTransactionManager().rollbackTransaction();
+        }
+        catch (TransactionException e) {
+            throw new ExecutionException(e);
+        }
     }
 }

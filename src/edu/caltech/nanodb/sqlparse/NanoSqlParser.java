@@ -755,11 +755,35 @@ public NanoSqlParser(ParserSharedInputState state) {
 	public final CrashCommand  crash_stmt() throws RecognitionException, TokenStreamException {
 		CrashCommand c;
 		
+		Token  n = null;
+		
 		c = null;
+		int secs = 0;
+		
 		
 		try {      // for error handling
 			match(CRASH);
-			c = new CrashCommand();
+			{
+			switch ( LA(1)) {
+			case INT_LITERAL:
+			{
+				n = LT(1);
+				match(INT_LITERAL);
+				secs = Integer.valueOf(n.getText());
+				break;
+			}
+			case EOF:
+			case SEMICOLON:
+			{
+				break;
+			}
+			default:
+			{
+				throw new NoViableAltException(LT(1), getFilename());
+			}
+			}
+			}
+			c = new CrashCommand(secs);
 		}
 		catch (RecognitionException ex) {
 			reportError(ex);
@@ -3245,7 +3269,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=logical_and_expr();
 			{
-			_loop161:
+			_loop162:
 			do {
 				if ((LA(1)==OR)) {
 					match(OR);
@@ -3265,7 +3289,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					
 				}
 				else {
-					break _loop161;
+					break _loop162;
 				}
 				
 			} while (true);
@@ -3309,7 +3333,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 				e=expression();
 				exprs.add(e);
 				{
-				_loop158:
+				_loop159:
 				do {
 					if ((LA(1)==COMMA)) {
 						match(COMMA);
@@ -3317,7 +3341,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 						exprs.add(e);
 					}
 					else {
-						break _loop158;
+						break _loop159;
 					}
 					
 				} while (true);
@@ -3355,7 +3379,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=logical_not_expr();
 			{
-			_loop164:
+			_loop165:
 			do {
 				if ((LA(1)==AND)) {
 					match(AND);
@@ -3375,7 +3399,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					
 				}
 				else {
-					break _loop164;
+					break _loop165;
 				}
 				
 			} while (true);
@@ -3772,7 +3796,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=mult_expr();
 			{
-			_loop184:
+			_loop185:
 			do {
 				if ((LA(1)==MINUS||LA(1)==PLUS)) {
 					{
@@ -3799,7 +3823,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e = new ArithmeticOperator(mathType, e, e2);
 				}
 				else {
-					break _loop184;
+					break _loop185;
 				}
 				
 			} while (true);
@@ -3828,7 +3852,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 		try {      // for error handling
 			e=unary_op_expr();
 			{
-			_loop188:
+			_loop189:
 			do {
 				if ((LA(1)==STAR||LA(1)==SLASH||LA(1)==PERCENT)) {
 					{
@@ -3861,7 +3885,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e = new ArithmeticOperator(mathType, e, e2);
 				}
 				else {
-					break _loop188;
+					break _loop189;
 				}
 				
 			} while (true);
@@ -4107,7 +4131,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 					e=expression();
 					args.add(e);
 					{
-					_loop199:
+					_loop200:
 					do {
 						if ((LA(1)==COMMA)) {
 							match(COMMA);
@@ -4115,7 +4139,7 @@ public NanoSqlParser(ParserSharedInputState state) {
 							args.add(e);
 						}
 						else {
-							break _loop199;
+							break _loop200;
 						}
 						
 					} while (true);

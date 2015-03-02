@@ -791,8 +791,12 @@ optimize_stmt returns [OptimizeCommand c]
 /* CRASH Statements */
 
 crash_stmt returns [CrashCommand c]
-  { c = null; } :
-  CRASH { c = new CrashCommand(); }
+  {
+    c = null;
+    int secs = 0;
+  } :
+  CRASH ( n:INT_LITERAL { secs = Integer.valueOf(n.getText()); } )?
+  { c = new CrashCommand(secs); }
   ;
 
 

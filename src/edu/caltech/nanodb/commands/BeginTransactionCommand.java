@@ -2,6 +2,7 @@ package edu.caltech.nanodb.commands;
 
 
 import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.transactions.TransactionException;
 
 
 /**
@@ -17,7 +18,14 @@ public class BeginTransactionCommand extends Command {
     @Override
     public void execute(StorageManager storageManager)
         throws ExecutionException {
-
-        throw new ExecutionException("Not yet implemented!");
+        // Begin a transaction.
+        try {
+            // Pass true for the "user-started transaction" flag, since the
+            // user issued the command to do it!
+            storageManager.getTransactionManager().startTransaction(true);
+        }
+        catch (TransactionException e) {
+            throw new ExecutionException(e);
+        }
     }
 }
