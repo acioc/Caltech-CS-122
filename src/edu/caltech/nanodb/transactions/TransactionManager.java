@@ -13,18 +13,14 @@ import edu.caltech.nanodb.server.properties.PropertyHandler;
 import edu.caltech.nanodb.server.properties.PropertyRegistry;
 import edu.caltech.nanodb.server.properties.ReadOnlyPropertyException;
 import edu.caltech.nanodb.server.properties.UnrecognizedPropertyException;
-
 import edu.caltech.nanodb.client.SessionState;
-
 import edu.caltech.nanodb.server.EventDispatcher;
-
 import edu.caltech.nanodb.storage.BufferManager;
 import edu.caltech.nanodb.storage.BufferManagerObserver;
 import edu.caltech.nanodb.storage.DBFile;
 import edu.caltech.nanodb.storage.DBFileType;
 import edu.caltech.nanodb.storage.DBPage;
 import edu.caltech.nanodb.storage.StorageManager;
-
 import edu.caltech.nanodb.storage.writeahead.LogSequenceNumber;
 import edu.caltech.nanodb.storage.writeahead.RecoveryInfo;
 import edu.caltech.nanodb.storage.writeahead.WALManager;
@@ -409,29 +405,24 @@ public class TransactionManager implements BufferManagerObserver {
      */
     @Override
     public void beforeWriteDirtyPages(List<DBPage> pages) throws IOException {
-        // TODO:  IMPLEMENT
-        //
-        // This implementation must enforce the write-ahead logging rule (aka
-        // the WAL rule) by ensuring that the write-ahead log reflects all
-        // changes to all of the specified pages, on disk, before any of these
-        // pages may be written to disk.
-        //
-        // Recall that DBPages have a pageLSN field that is set to the LSN
-        // of the last WAL record describing a change to the page.  This value
-        // is not always set; it will be null if the page is part of a data
-        // file whose type is not logged.  (It may also be null if there is a
-        // bug in the write-ahead logging code.  It would be wise to report a
-        // warning, or throw an exception, if a page doesn't have a LSN when
-        // it ought to.)
-        //
-        // Some file types are not recorded to the write-ahead log; these
-        // pages should be ignored when determining how to update the WAL.
-        // You can find a page's file-type by doing something like this:
-        // dbPage.getDBFile().getType().  If it is WRITE_AHEAD_LOG_FILE or
-        // TXNSTATE_FILE then you should ignore the page.
-        //
-        // Finally, you can use the forceWAL(LogSequenceNumber) function to
-        // force the WAL to be written out to the specified LSN.
+        // We iterate through all of our inputs and ensure that our page type
+        // is not a WRITE_AHEAD_LOG_FILE or TXNSTATE_FILE
+        for (DBPage dbPage : pages) {
+            DBFileType dbFileType = dbPage.getDBFile().getType();
+            if ((dbFileType != DBFileType.WRITE_AHEAD_LOG_FILE) &&
+                (dbFileType != DBFileType.TXNSTATE_FILE)) {
+                // We obtain the LSN and forceWAL it
+                LogSequenceNumber dbLNS = dbPage.getPageLSN();
+                if (dbLNS != null) {
+                    forceWAL(dbLNS);
+                }
+                else {
+                    throw new UnsupportedOperationException(
+                            "DBFile had no page LSN");
+                }
+                
+            }
+        }
     }
 
 
