@@ -31,7 +31,7 @@ public class NanoDBServer {
     private static Logger logger = Logger.getLogger(NanoDBServer.class);
 
 
-    public static final boolean FLUSH_DATA_AFTER_CMD = true;
+    public static final boolean FLUSH_DATA_AFTER_CMD = false;
 
 
     private StorageManager storageManager;
