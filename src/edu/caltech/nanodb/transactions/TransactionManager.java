@@ -450,14 +450,47 @@ public class TransactionManager implements BufferManagerObserver {
      *         going to be broken.
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
-        // TODO:  IMPLEMENT
-        //
-        // Note that the "next LSN" value must be determined from both the
-        // current LSN *and* its record size; otherwise we lose the last log
-        // record in the WAL file.  You can use this static method:
-        //
-        // int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
-        // WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
+        // We have a no-op if the lsn passed into the function is not
+        // greater than the txnStateNextLSN         
+        if (txnStateNextLSN.compareTo(lsn) >= 0) {
+            return;
+        }
+            
+        // We iterate over every file less than the current and sync 
+        // every page within the file (if the file is open)
+        BufferManager buffManager = storageManager.getBufferManager(); 
+        int initialFile = txnStateNextLSN.getLogFileNo();
+        int finalFile = lsn.getLogFileNo();
+        DBFile bufferedFile;
+        String fileName;
+        for (int i = initialFile; i < finalFile; i++) {
+            // Obtain the correct file name and open the file
+            fileName = WALManager.getWALFileName(i);
+            bufferedFile = buffManager.getFile(fileName);
+            // Write the file
+            if (bufferedFile != null) {
+                buffManager.writeDBFile(bufferedFile, true);    
+            }
+        }
+        
+        // We get the offset of the current file and sync that segment
+        fileName = WALManager.getWALFileName(finalFile);
+        bufferedFile = buffManager.getFile(fileName);
+        int currOffset = lsn.getFileOffset();
+        // Write the file
+        if (bufferedFile != null) {
+            buffManager.writeDBFile(bufferedFile, 0, currOffset, true);
+        }
+            
+        // We obtain the "next LSN" by using the offset from the current 
+        // LSN and its record size
+        int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
+        // This represents our next LSN
+        txnStateNextLSN = WALManager.computeNextLSN(
+            lsn.getLogFileNo(), 
+            lastPosition);
+        // We store the txnStateNextLSN
+        storeTxnStateToFile();
     }
 
 
