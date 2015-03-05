@@ -456,8 +456,15 @@ public class TransactionManager implements BufferManagerObserver {
             return;
         }
             
-        // We iterate over every file less than the current and sync 
-        // every page within the file (if the file is open)
+        /*
+         * We iterate over every file less than the current and sync 
+         * every page within the file (if the file is open).
+         * This is atomic and durable because we write every dirty page 
+         * from opened files. Therefore, we ensure that, before we
+         * write our new information, all of the old information is properly
+         * stored. The getFile and writeDBFile also follow are atomicity 
+         * requirement.
+         */
         BufferManager buffManager = storageManager.getBufferManager(); 
         int initialFile = txnStateNextLSN.getLogFileNo();
         int finalFile = lsn.getLogFileNo();
@@ -474,6 +481,8 @@ public class TransactionManager implements BufferManagerObserver {
         }
         
         // We get the offset of the current file and sync that segment
+        // This follow our requirements since we write the dirty
+        // pages in our file before we write our new information.
         fileName = WALManager.getWALFileName(finalFile);
         bufferedFile = buffManager.getFile(fileName);
         int currOffset = lsn.getFileOffset();
@@ -483,7 +492,8 @@ public class TransactionManager implements BufferManagerObserver {
         }
             
         // We obtain the "next LSN" by using the offset from the current 
-        // LSN and its record size
+        // LSN and its record size. This ensures that the next request
+        // is located in a correct location.
         int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
         // This represents our next LSN
         txnStateNextLSN = WALManager.computeNextLSN(
