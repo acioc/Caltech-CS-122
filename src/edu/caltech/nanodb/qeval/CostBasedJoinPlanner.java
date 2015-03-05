@@ -678,7 +678,7 @@ public class CostBasedJoinPlanner implements Planner {
                         if (!usedConjucts.isEmpty()) {
                             // Get our correct predicates
                             Expression newExpressions = 
-                                    makePredicate(usedConjucts);
+                            		PredicateUtils.makePredicate(usedConjucts);
                             
                         	newPlanNode = new NestedLoopsJoinNode(
                                     leftNode,
