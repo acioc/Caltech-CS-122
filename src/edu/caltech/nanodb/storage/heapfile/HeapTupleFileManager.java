@@ -73,7 +73,7 @@ public class HeapTupleFileManager implements TupleFileManager {
         // Read in the statistics.
         StatsWriter statsWriter = new StatsWriter();
         TableStats stats = statsWriter.readTableStats(hpReader, schema);
-
+        storageManager.logDBPageWrite(headerPage);
         return new HeapTupleFile(storageManager, this, dbFile, schema, stats);
     }
 
@@ -123,6 +123,7 @@ public class HeapTupleFileManager implements TupleFileManager {
         // Writes the linked list prev/next indices to the header page
         headerPage.writeShort(headerPage.getPageSize() - 4, 0); // next
         headerPage.writeShort(headerPage.getPageSize() - 2, 0); // previous
+        storageManager.logDBPageWrite(headerPage);
     }
 
 
