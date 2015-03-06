@@ -405,23 +405,37 @@ public class TransactionManager implements BufferManagerObserver {
      */
     @Override
     public void beforeWriteDirtyPages(List<DBPage> pages) throws IOException {
+        // We define a maxLSN
+        LogSequenceNumber maxLSN = null;
         // We iterate through all of our inputs and ensure that our page type
         // is not a WRITE_AHEAD_LOG_FILE or TXNSTATE_FILE
         for (DBPage dbPage : pages) {
             DBFileType dbFileType = dbPage.getDBFile().getType();
             if ((dbFileType != DBFileType.WRITE_AHEAD_LOG_FILE) &&
                 (dbFileType != DBFileType.TXNSTATE_FILE)) {
-                // We obtain the LSN and forceWAL it
-                LogSequenceNumber dbLNS = dbPage.getPageLSN();
-                if (dbLNS != null) {
-                    forceWAL(dbLNS);
+                // We obtain the new LSN
+                LogSequenceNumber newLSN = dbPage.getPageLSN();
+                // We initialize the maxLSN if it is null
+                if ((maxLSN == null) && (newLSN != null)) {
+                    maxLSN = newLSN;
                 }
+                // We set the maxLSN to the newLSN if it is bigger
+                else if (newLSN != null) {
+                    if (newLSN.compareTo(maxLSN) > 0) {
+                        maxLSN = newLSN;
+                    }
+                }
+                // We throw an exception for NULL LSNs
                 else {
                     throw new UnsupportedOperationException(
                             "DBFile had no page LSN");
                 }
                 
             }
+        }
+        // We forceWAL the maxLSN
+        if (maxLSN != null) {
+            forceWAL(maxLSN);
         }
     }
 

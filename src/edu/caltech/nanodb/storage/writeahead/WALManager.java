@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.caltech.nanodb.transactions.TransactionManager;
+
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.client.SessionState;
@@ -1060,20 +1061,41 @@ public class WALManager {
             logger.debug(String.format(
                 "Undoing WAL record at %s.  Type = %s, TxnID = %d",
                 lsn, type, transactionID));
+            
+            // We break if we are at our starting transaction
+            if (type == WALRecordType.START_TXN) {
+                break;
+            }
+            // We throw an exception if we have an invalid type
+            else if (type != WALRecordType.UPDATE_PAGE) {
+                throw new WALFileException("Traversing WAL file didn't "
+                        + "yield valid Update type");
+            }
+            
+            // Obtain the previous LSN from the WAL
+            int prevFileNumber = walReader.readUnsignedShort();
+            int prevOffset = walReader.readInt();            
+            
+            // Obtain the DB file and page that was last modified
+            String fileName = walReader.readVarString255();
+            int pageNumber = walReader.readUnsignedShort();
+            DBFile dbFile = storageManager.openDBFile(fileName);
+            DBPage dbPage = storageManager.loadDBPage(dbFile, pageNumber);
+           
+            // Obtain the segments to be undone
+            int segments = walReader.readUnsignedShort();
 
-            // TODO:  IMPLEMENT THE REST
-            //
-            //        Use logging statements liberally to help verify and
-            //        debug your work.
-            //
-            //        If you encounter invalid WAL contents, throw a
-            //        WALFileException to indicate the problem immediately.
-            //
-            // TODO:  SET lsn TO PREVIOUS LSN TO WALK BACKWARD THROUGH WAL.
-
-            // TODO:  This break is just here so the code will compile; when
-            //        you provide your own implementation, get rid of it!
-            break;
+            // We undo the changes to the page and obtain the re-do only data
+            byte[] changes = applyUndoAndGenRedoOnlyData(
+                walReader, 
+                dbPage, 
+                segments);
+            
+            // We perform the re-do operation
+            writeRedoOnlyUpdatePageRecord(dbPage, segments, changes);
+            
+            // We set our LSN to the previous LSN
+            lsn = new LogSequenceNumber(prevFileNumber, prevOffset);
         }
 
         // All done rolling back the transaction!  Record that it was aborted
