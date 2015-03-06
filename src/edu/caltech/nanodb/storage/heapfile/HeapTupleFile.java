@@ -554,8 +554,8 @@ public class HeapTupleFile implements TupleFile {
                 for(int i = 0; i < numCols; i++) {
                     ar.get(i).addValue(curTuple.getColumnValue(i));
                 }
-                storageManager.logDBPageWrite(curPage);
             }
+            storageManager.logDBPageWrite(curPage);
             // once all slots are processed, move to the next page
             pageNum++;
         }
