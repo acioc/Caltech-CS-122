@@ -323,7 +323,7 @@ public class WALManager {
 
     /**
      * This method performs the undo phase of the recovery process. It undoes every operation
-     * performed by an incomplete transaction. 
+     * performed by an incomplete transaction.
      * @param recoveryInfo the details needed to perform the recovery. Most importantly,
      *                     it contains the first LSN.
      * @throws IOException

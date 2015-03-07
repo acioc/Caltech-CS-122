@@ -424,14 +424,6 @@ public class TransactionManager implements BufferManagerObserver {
                         maxLSN = newLSN;
                     }
                 }
-                // We throw an exception for NULL LSNs
-                else {
-                   /*
-                    throw new UnsupportedOperationException(
-                            "DBFile had no page LSN. Page number: " + dbPage.getPageNo());
-                            */
-                }
-                
             }
         }
         // We forceWAL the maxLSN
