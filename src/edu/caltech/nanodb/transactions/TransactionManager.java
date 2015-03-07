@@ -301,7 +301,6 @@ public class TransactionManager implements BufferManagerObserver {
             logger.debug("Page reports it is not dirty; not logging update.");
             return;
         }
-
         logger.debug("Recording page-update for page " + dbPage.getPageNo() +
             " of file " + dbPage.getDBFile());
 
@@ -427,8 +426,10 @@ public class TransactionManager implements BufferManagerObserver {
                 }
                 // We throw an exception for NULL LSNs
                 else {
+                   /*
                     throw new UnsupportedOperationException(
-                            "DBFile had no page LSN");
+                            "DBFile had no page LSN. Page number: " + dbPage.getPageNo());
+                            */
                 }
                 
             }

@@ -471,8 +471,14 @@ public class StorageManager {
      */
     public void logDBPageWrite(DBPage dbPage) throws IOException {
         // If the page is dirty, record its changes to the write-ahead log.
-        if (transactionManager != null)
+        logger.debug("Inside logDBPageWrite");
+        if (transactionManager != null) {
+            logger.debug("transaction manager was not null");
             transactionManager.recordPageUpdate(dbPage);
+        }
+        else {
+            logger.debug("transaction manager was null");
+        }
     }
 
 

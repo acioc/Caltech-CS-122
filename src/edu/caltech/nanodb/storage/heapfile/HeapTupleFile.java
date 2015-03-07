@@ -393,7 +393,9 @@ public class HeapTupleFile implements TupleFile {
         }
         pageTup.unpin();
         dbPage.unpin();
+        logger.debug("about to call logDBPageWrite");
         storageManager.logDBPageWrite(dbPage);
+        logger.debug("successfully called logDBPageWrite");
         return pageTup;
     }
 
