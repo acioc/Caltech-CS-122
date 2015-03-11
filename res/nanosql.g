@@ -184,7 +184,8 @@ command returns [Command c] { c = null; } :
   | c=select_stmt | c=insert_stmt | c=update_stmt | c=delete_stmt  // DML
   | c=begin_txn_stmt | c=commit_txn_stmt | c=rollback_txn_stmt     // Transactions
   | c=analyze_stmt | c=explain_stmt | c=exit_stmt | c=crash_stmt   // Utility
-  | c=dump_stmt | c=flush_stmt | c=verify_stmt | c=optimize_stmt   // Utility
+  | c=dump_table_stmt // | c=dump_index_stmt                          // Utility
+  | c=flush_stmt | c=verify_stmt | c=optimize_stmt                 // Utility
   | c=showvars_stmt | c=setvar_stmt                                // Utility
   )
   ;
@@ -750,7 +751,7 @@ explain_stmt returns [Command c]
 
 /* DUMP Statements */
 
-dump_stmt returns [DumpTableCommand c]
+dump_table_stmt returns [DumpTableCommand c]
   {
     c = null;
     String tblName = null;
@@ -761,6 +762,21 @@ dump_stmt returns [DumpTableCommand c]
   ( TO FILE s:STRING_LITERAL { fileName = s.getText(); } )?
   ( FORMAT format=dbobj_ident )?
   { c = new DumpTableCommand(tblName, fileName, format); }
+  ;
+
+
+dump_index_stmt returns [DumpIndexCommand c]
+  {
+    c = null;
+    String tblName = null;
+    String idxName = null;
+    String fileName = null;
+    String format = null;
+  } :
+  DUMP INDEX idxName=dbobj_ident ON TABLE tblName=dbobj_ident
+  ( TO FILE s:STRING_LITERAL { fileName = s.getText(); } )?
+  ( FORMAT format=dbobj_ident )?
+  { c = new DumpIndexCommand(idxName, tblName, fileName, format); }
   ;
 
 

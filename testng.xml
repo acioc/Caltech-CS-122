@@ -29,4 +29,32 @@
       <package name="edu.caltech.test.nanodb.functions" />
     </packages>
   </test>
+
+  <test name="assignment5-tests">
+    <classes>
+      <class name="edu.caltech.test.nanodb.storage.btreefile.TestBTreeFile">
+        <methods>
+          <include name="testBTreeTableOnePageInsert" />
+          <include name="testBTreeTableTwoPageInsert" />
+          <include name="testBTreeTableTwoLevelInsert" />
+          <include name="testBTreeTableThreeLevelInsert" />
+        </methods>
+      </class>
+      <class name="edu.caltech.test.nanodb.indexes.TestIndexOps">
+        <methods>
+          <include name="testCreateNormalIndex" />
+          <include name="testCreateSameColIndex" />
+          <include name="testCreateSameIndex" />
+          <include name="testUniquePopulated" />
+        </methods>
+      </class>
+      <class name="edu.caltech.test.nanodb.indexes.TestUniqueOps">
+        <methods>
+          <include name="testUniqueConstraint" />
+          <include name="testUniqueIndexExists" />
+          <include name="testUniquePopulated" />
+        </methods>
+      </class>
+    </classes>
+  </test>
 </suite>

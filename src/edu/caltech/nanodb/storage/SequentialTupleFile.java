@@ -32,11 +32,17 @@ public interface SequentialTupleFile extends TupleFile {
      * or {@code null} if there are no tuples with this search-key value in
      * the tuple file.
      *
-     * @param searchKey
-     * @return
-     * @throws IOException
+     * @param searchKey the tuple to search for
+     *
+     * @return The first tuple in the file with the same hash-key values, or
+     *         {@code null} if the file contains no files with the specified
+     *         search key value.  This tuple will actually be backed by the
+     *         tuple file, so typically it will be a subclass of
+     *         {@link PageTuple}.
+     *
+     * @throws IOException if an IO error occurs during the operation
      */
-    Tuple getFirstTupleEquals(Tuple searchKey) throws IOException;
+    Tuple findFirstTupleEquals(Tuple searchKey) throws IOException;
 
 
     /**
@@ -48,5 +54,5 @@ public interface SequentialTupleFile extends TupleFile {
      * @return
      * @throws IOException
      */
-    Tuple getFirstTupleGreaterThan(Tuple searchKey) throws IOException;
+    Tuple findFirstTupleGreaterThan(Tuple searchKey) throws IOException;
 }

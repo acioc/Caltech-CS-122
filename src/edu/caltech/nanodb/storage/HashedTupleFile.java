@@ -22,24 +22,39 @@ public interface HashedTupleFile extends TupleFile {
 
 
     /**
-     * Returns the first tuple in the file that has the same hash-key value,
+     * Returns the first tuple in the file that has the same hash-key values,
      * or {@code null} if there are no tuples with this hash-key value in
      * the tuple file.
      *
-     * @param searchKey
-     * @return
-     * @throws IOException
+     * @param hashKey the tuple to search for
+     *
+     * @return The first tuple in the file with the same hash-key values, or
+     *         {@code null} if the file contains no files with the specified
+     *         search key value.  This tuple will actually be backed by the
+     *         tuple file, so typically it will be a subclass of
+     *         {@link PageTuple}.
+     *
+     * @throws IOException if an IO error occurs during the operation
      */
-    Tuple getFirstTupleEquals(Tuple searchKey) throws IOException;
+    Tuple findFirstTupleEquals(Tuple hashKey) throws IOException;
 
 
     /**
      * Returns the next entry in the index that has the same hash-key value,
      * or {@code null} if there are no more entries with this hash-key value
-     * in the index.
+     * in the tuple file.
      *
-     * @return
-     * @throws IOException
+     * @param prevTuple The tuple from which to resume the search for the next
+     *        tuple with the same hash-key values.  This should be a tuple
+     *        returned by a previous call to {@link #findFirstTupleEquals} or
+     *        {@link #findNextTupleEquals}; using any other tuple would be an
+     *        error.
+     *
+     * @return The next tuple in the file with the same hash-key values, or
+     *         {@code null} if there are no more entries with this hash-key
+     *         value in the file.
+     *
+     * @throws IOException if an IO error occurs during the operation
      */
-    Tuple getNextTupleEquals(Tuple indexEntry) throws IOException;
+    Tuple findNextTupleEquals(Tuple prevTuple) throws IOException;
 }

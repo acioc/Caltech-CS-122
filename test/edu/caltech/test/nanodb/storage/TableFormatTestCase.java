@@ -108,7 +108,7 @@ public class TableFormatTestCase extends SqlTestCase {
                 Iterator<TupleLiteral> iter = inserted.iterator();
                 while (iter.hasNext()) {
                     TupleLiteral tup = iter.next();
-                    int aVal = ((Integer) tup.getColumnValue(0)).intValue();
+                    int aVal = (Integer) tup.getColumnValue(0);
                     if (aVal >= minAToDel && aVal <= maxAToDel)
                         iter.remove();
                 }
@@ -123,8 +123,8 @@ public class TableFormatTestCase extends SqlTestCase {
 
         TupleLiteral[] tupleArray = inserted.toArray(new TupleLiteral[inserted.size()]);
         if (ordered)
-            checkOrderedResults(tupleArray, result);
+            assert checkOrderedResults(tupleArray, result);
         else
-            checkUnorderedResults(tupleArray, result);
+            assert checkUnorderedResults(tupleArray, result);
     }
 }

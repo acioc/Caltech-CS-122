@@ -4,11 +4,11 @@ package edu.caltech.nanodb.relations;
 /**
  * This class represents a foreign key to another table in the database.
  */
-public class ForeignKeyColumnIndexes {
+public class ForeignKeyColumnRefs {
     /** This is the optional name of the constraint specified in the DDL. */
     private String constraintName;
-    
-    
+
+
     /** This array holds the indexes of the columns in the foreign key. */
     private int[] colIndexes;
 
@@ -25,9 +25,9 @@ public class ForeignKeyColumnIndexes {
     private ForeignKeyValueChangeOption onUpdateOption;
 
 
-    public ForeignKeyColumnIndexes(int[] colIndexes, String referencedTable,
-        int[] referencedColIndexes, ForeignKeyValueChangeOption onDeleteOption,
-        ForeignKeyValueChangeOption onUpdateOption) {
+    public ForeignKeyColumnRefs(int[] colIndexes, String referencedTable,
+                                int[] referencedColIndexes, ForeignKeyValueChangeOption onDeleteOption,
+                                ForeignKeyValueChangeOption onUpdateOption) {
         if (colIndexes == null) {
             throw new IllegalArgumentException(
                 "colIndexes must be specified");
@@ -53,13 +53,13 @@ public class ForeignKeyColumnIndexes {
         this.referencedColIndexes = referencedColIndexes;
 
         // If ON DELETE option isn't specified, default to RESTRICT.
-        if (onDeleteOption != null) 
+        if (onDeleteOption != null)
             this.onDeleteOption = onDeleteOption;
         else
             this.onDeleteOption = ForeignKeyValueChangeOption.RESTRICT;
 
         // If ON UPDATE option isn't specified, default to RESTRICT.
-        if (onUpdateOption != null) 
+        if (onUpdateOption != null)
             this.onUpdateOption = onUpdateOption;
         else
             this.onUpdateOption = ForeignKeyValueChangeOption.RESTRICT;
@@ -89,11 +89,11 @@ public class ForeignKeyColumnIndexes {
     public int[] getCols() {
         return colIndexes;
     }
-    
+
     public String getRefTable() {
         return referencedTable;
     }
-    
+
 
     public int getRefCol(int i) {
         return referencedColIndexes[i];

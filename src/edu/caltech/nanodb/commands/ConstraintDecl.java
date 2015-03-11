@@ -10,9 +10,9 @@ import edu.caltech.nanodb.relations.TableConstraintType;
 
 
 /**
- * Constraints may be specified at the table level, or they may be specified on
- * individual columns.  Obviously, the kinds of constraint allowed depends on
- * what the constraint is associated with.
+ * Constraints may be specified at the table level, or they may be specified
+ * on individual columns.  Obviously, the kinds of constraint allowed depends
+ * on what the constraint is associated with.
  */
 public class ConstraintDecl {
 
@@ -104,11 +104,11 @@ public class ConstraintDecl {
         this.columnConstraint = columnConstraint;
     }
 
-    
+
     public String getName() {
         return name;
     }
-    
+
 
     /** Returns the type of this constraint. */
     public TableConstraintType getType() {
@@ -140,8 +140,8 @@ public class ConstraintDecl {
      * @design (donnie) Column names are checked for existence and uniqueness
      *         when initializing the corresponding objects for storage on the
      *         table schema.  See
-     *         {@link edu.caltech.nanodb.relations.TableSchema#makeKey} and
-     *         {@link edu.caltech.nanodb.relations.TableSchema#makeForeignKey}
+     *         {@link edu.caltech.nanodb.relations.TableSchema#addCandidateKey} and
+     *         {@link edu.caltech.nanodb.relations.TableSchema#addForeignKey}
      *         for details.
      */
     public void addColumn(String columnName) {
@@ -221,8 +221,8 @@ public class ConstraintDecl {
      * @design (donnie) Column names are checked for existence and uniqueness
      *         when initializing the corresponding objects for storage on the
      *         table schema.  See
-     *         {@link edu.caltech.nanodb.relations.TableSchema#makeKey} and
-     *         {@link edu.caltech.nanodb.relations.TableSchema#makeForeignKey}
+     *         {@link edu.caltech.nanodb.relations.TableSchema#addCandidateKey} and
+     *         {@link edu.caltech.nanodb.relations.TableSchema#addForeignKey}
      *         for details.
      */
     public void addRefColumn(String columnName) {

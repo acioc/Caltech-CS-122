@@ -1,9 +1,14 @@
 package edu.caltech.nanodb.commands;
 
 
-import edu.caltech.nanodb.storage.StorageManager;
+import java.io.IOException;
 
 import org.apache.log4j.Logger;
+
+import edu.caltech.nanodb.indexes.IndexManager;
+import edu.caltech.nanodb.relations.TableInfo;
+import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.storage.TableManager;
 
 
 /**
@@ -36,6 +41,24 @@ public class DropIndexCommand extends Command {
     @Override
     public void execute(StorageManager storageManager)
         throws ExecutionException {
-        throw new ExecutionException("Not yet implemented!");
+
+        TableManager tableManager = storageManager.getTableManager();
+        IndexManager indexManager = storageManager.getIndexManager();
+
+        try {
+            // Open the table, then attempt to drop the index.  If it works,
+            // save the table's schema back to the table file.
+
+            TableInfo tableInfo = tableManager.openTable(tableName);
+            indexManager.dropIndex(tableInfo, indexName);
+            tableManager.saveTableInfo(tableInfo);
+        }
+        catch (IOException e) {
+            throw new ExecutionException(String.format(
+                "Could not drop index \"%s\" on table \"%s\".  See " +
+                    "nested exception for details.", indexName, tableName), e);
+        }
+
+        out.printf("Dropped index %s on table %s.%n", indexName, tableName);
     }
 }
