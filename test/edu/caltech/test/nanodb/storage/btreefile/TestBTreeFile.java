@@ -28,6 +28,15 @@ import edu.caltech.test.nanodb.sql.SqlTestCase;
 public class TestBTreeFile extends SqlTestCase {
 
     /**
+     * If set to true, this causes the tests to verify the contents of the
+     * B tree file after every insertion or deletion.  This obviously greatly
+     * slows down the test, but it allows issues to be identified exactly when
+     * they appear.
+     */
+    public static final boolean CHECK_AFTER_EACH_CHANGE = false;
+
+
+    /**
      * A source of randomness to generate tuples from.  Set the seed so we
      * have reproducible test cases.
      */
@@ -63,6 +72,8 @@ public class TestBTreeFile extends SqlTestCase {
                               int maxAValue, int minBLen, int maxBLen,
                               boolean deleteWhileInserting) throws Exception {
         ArrayList<TupleLiteral> inserted = new ArrayList<>();
+        CommandResult result;
+
         for (int i = 0; i < numRowsToInsert; i++) {
             int a = rand.nextInt(maxAValue);
             String b = makeRandomString(minBLen, maxBLen);
@@ -70,6 +81,13 @@ public class TestBTreeFile extends SqlTestCase {
             tryDoCommand(String.format(
                 "INSERT INTO %s VALUES (%d, '%s');", tableName, a, b), false);
             inserted.add(new TupleLiteral(a, b));
+
+            if (CHECK_AFTER_EACH_CHANGE) {
+                sortTupleLiteralArray(inserted);
+                result = tryDoCommand(String.format("SELECT * FROM %s;",
+                    tableName), true);
+                assert checkOrderedResults(inserted.toArray(new TupleLiteral[inserted.size()]), result);
+            }
 
             if (deleteWhileInserting && rand.nextDouble() < 0.05) {
                 // Delete some rows from the table we are populating.
@@ -90,15 +108,22 @@ public class TestBTreeFile extends SqlTestCase {
                 Iterator<TupleLiteral> iter = inserted.iterator();
                 while (iter.hasNext()) {
                     TupleLiteral tup = iter.next();
-                    int aVal = ((Integer) tup.getColumnValue(0)).intValue();
+                    int aVal = (Integer) tup.getColumnValue(0);
                     if (aVal >= minAToDel && aVal <= maxAToDel)
                         iter.remove();
+                }
+
+                if (CHECK_AFTER_EACH_CHANGE) {
+                    sortTupleLiteralArray(inserted);
+                    result = tryDoCommand(String.format("SELECT * FROM %s;",
+                        tableName), true);
+                    assert checkOrderedResults(inserted.toArray(new TupleLiteral[inserted.size()]), result);
                 }
             }
         }
 
         sortTupleLiteralArray(inserted);
-        CommandResult result = tryDoCommand(String.format("SELECT * FROM %s;",
+        result = tryDoCommand(String.format("SELECT * FROM %s;",
             tableName), true);
         assert checkOrderedResults(inserted.toArray(new TupleLiteral[inserted.size()]), result);
 
