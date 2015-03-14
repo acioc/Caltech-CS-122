@@ -389,6 +389,10 @@ public class LeafPageOperations {
         if (pathSize == 1)  // This node is also the root - no parent.
             return null;    // There aren't any siblings to relocate to.
 
+        if(pathSize == 0) {
+            throw new IllegalArgumentException("path size can't be zero!");
+        }
+
         if (pagePath.get(pathSize - 1) != page.getPageNo()) {
             throw new IllegalArgumentException(
                 "leaf page number doesn't match last page-number in page path");
@@ -656,7 +660,7 @@ public class LeafPageOperations {
      */
     private BTreeFilePageTuple splitLeafAndAddTuple(LeafPage leaf,
         List<Integer> pagePath, TupleLiteral tuple) throws IOException {
-
+        System.out.println("splitting!");
         int pathSize = pagePath.size();
         if (pagePath.get(pathSize - 1) != leaf.getPageNo()) {
             throw new IllegalArgumentException(
@@ -705,7 +709,7 @@ public class LeafPageOperations {
          * a parent, the tree's depth will increase by one level.
          */
         return retTuple;
-        
+
     }
 
 
