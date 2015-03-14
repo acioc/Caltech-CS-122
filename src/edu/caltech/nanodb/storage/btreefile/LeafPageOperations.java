@@ -679,11 +679,18 @@ public class LeafPageOperations {
         DBPage newDBPage = fileOps.getNewDataPage();
         LeafPage newLeaf = LeafPage.init(newDBPage, tupleFile.getSchema());
 
+        // we move half the tuples to the new leaf
+        // then adjust the pointers accordingly to keep
+        // the leafs aligned with the greater leaf set
         int oldNextPointer = leaf.getNextPageNo();
         leaf.setNextPageNo(newLeaf.getPageNo());
         leaf.moveTuplesRight(newLeaf, leaf.getNumTuples() / 2);
         newLeaf.setNextPageNo(oldNextPointer);
 
+        // determining which of the leafs to add the new tuple to:
+        // we compare the tuple to the first tuple in the second leaf
+        // if it's bigger, we add it to the second leaf
+        // otherwise we add it to the first leaf
         int compVal = TupleComparator.comparePartialTuples(tuple, newLeaf.getTuple(0));
         BTreeFilePageTuple retTuple;
         if(compVal >= 0) {
@@ -695,23 +702,35 @@ public class LeafPageOperations {
             retTuple = leaf.addTuple(tuple);
         }
 
+        // now we add a new key to the parent tuple to distinguish
+        // between our two leafs
         InnerPage parent;
         Tuple key = newLeaf.getTuple(0);
 
+        // there is a special case where our path contains only the root
+        // in this case we must create a new inner page as the parent
+        // for our leaf. This page becomes the new root for the tree.
         if (pathSize < 2) {
             DBPage dbParent = fileOps.getNewDataPage();
             parent = InnerPage.init(dbParent, tupleFile.getSchema(), leaf.getPageNo(), key, newLeaf.getNextPageNo());
             DBFile dbFile = tupleFile.getDBFile();
             DBPage dbpHeader = storageManager.loadDBPage(dbFile, 0);
             HeaderPage.setRootPageNo(dbpHeader, parent.getPageNo());
+            int temp = pagePath.remove(pagePath.size() - 1);
+            pagePath.add(parent.getPageNo());
+            pagePath.add(temp);
         }
+
+        // otherwise we just add a new entry to the parent node
+        // immediately after the original entry
         else {
             parent = innerPageOps.loadPage(pagePath.get(pathSize - 2));
             parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
         }
 
+        return retTuple;
 
-        /* TODO:  IMPLEMENT THE REST OF THIS METHOD.
+        /* Donnie's hints, just in case we need them:
          *
          * The LeafPage class provides some helpful operations for moving leaf-
          * entries to a left or right sibling.
@@ -719,8 +738,6 @@ public class LeafPageOperations {
          * The parent page must also be updated.  If the leaf node doesn't have
          * a parent, the tree's depth will increase by one level.
          */
-        return retTuple;
-
     }
 
 

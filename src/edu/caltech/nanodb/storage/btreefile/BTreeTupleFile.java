@@ -442,39 +442,52 @@ public class BTreeTupleFile implements SequentialTupleFile {
         if (pageType != BTREE_INNER_PAGE && pageType != BTREE_LEAF_PAGE)
             throw new IOException("Invalid page type encountered:  " + pageType);
 
+        // add the root to the page path
         if (pagePath != null)
             pagePath.add(dbPage.getPageNo());
 
         DBPage currPage = dbpRoot;
+
+        // iterate down the tree until we reach a leaf page
+
         while(currPage.readByte(0) != BTREE_LEAF_PAGE) {
             InnerPage p = innerPageOps.loadPage(currPage.getPageNo());
 
             int numKeys = p.getNumKeys();
 
+            // iterate through each key, comparing it to our search key
+            // once we find the key bigger than our search key, we use that key's
+            // pointer to traverse to the next depth.
             for(int i = 0; i < numKeys; i++) {
                 int val = TupleComparator.comparePartialTuples(searchKey, p.getKey(i));
+
+                // we've found the correct key, so traverse using the pointer
                 if(val < 0) {
                     currPage = storageManager.loadDBPage(dbFile, p.getPointer(i));
                     break;
                 }
+                // the keys are equal, so traverse using the next pointer
                 else if (val == 0) {
                     currPage = storageManager.loadDBPage(dbFile, p.getPointer(i + 1));
                     break;
                 }
-
+                // our search key is still greater than the key
+                // at this point we increment the index and start over
+                // unless we're at the end of the for loop, in which case
+                // we default to using the final pointer for our current leaf depth
                 if(i == numKeys - 1) {
                     currPage = storageManager.loadDBPage(dbFile, p.getPointer(numKeys));
                     break;
                 }
             }
+            // adding our current page to the page path
             if (pagePath != null)
                 pagePath.add(currPage.getPageNo());
         }
 
-
         return new LeafPage(currPage, schema);
 
-        /* TODO:  IMPLEMENT THE REST OF THIS METHOD.
+        /* saving donnie's notes:
          *
          * Don't forget to update the page-path as you navigate the index
          * structure, if it is provided by the caller.
