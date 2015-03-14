@@ -675,6 +675,27 @@ public class LeafPageOperations {
         DBPage newDBPage = fileOps.getNewDataPage();
         LeafPage newLeaf = LeafPage.init(newDBPage, tupleFile.getSchema());
 
+        int oldNextPointer = leaf.getNextPageNo();
+        leaf.setNextPageNo(newLeaf.getPageNo());
+        leaf.moveTuplesRight(newLeaf, leaf.getNumTuples() / 2);
+        newLeaf.setNextPageNo(oldNextPointer);
+
+        int compVal = TupleComparator.comparePartialTuples(tuple, newLeaf.getTuple(0));
+        BTreeFilePageTuple retTuple;
+        if(compVal >= 0) {
+            retTuple = newLeaf.addTuple(tuple);
+            pagePath.remove(pagePath.size() - 1);
+            pagePath.add(newLeaf.getPageNo());
+        }
+        else {
+            retTuple = leaf.addTuple(tuple);
+        }
+
+        InnerPage parent = innerPageOps.loadPage(pagePath.get(pathSize - 2));
+        Tuple key = newLeaf.getTuple(0);
+
+        parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
+
         /* TODO:  IMPLEMENT THE REST OF THIS METHOD.
          *
          * The LeafPage class provides some helpful operations for moving leaf-
@@ -683,8 +704,8 @@ public class LeafPageOperations {
          * The parent page must also be updated.  If the leaf node doesn't have
          * a parent, the tree's depth will increase by one level.
          */
-        logger.error("NOT YET IMPLEMENTED:  splitLeafAndAddKey()");
-        return null;
+        return retTuple;
+        
     }
 
 
