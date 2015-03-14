@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import edu.caltech.nanodb.expressions.TupleLiteral;
 import edu.caltech.nanodb.qeval.TableStats;
 import edu.caltech.nanodb.relations.TableSchema;
 import edu.caltech.nanodb.relations.Tuple;
@@ -19,14 +18,20 @@ import edu.caltech.nanodb.relations.Tuple;
 public interface TupleFile {
 
     /**
+     * Returns the manager class for this kind of tuple file.
+     *
+     * @return the manager class for this kind of tuple file.
+     */
+    TupleFileManager getManager();
+
+
+    /**
      * Returns the {@code DBFile} object that this tuple file is stored in.
      *
-     * @review (donnie) This approach doesn't easily handle tuple-files that
-     *         are comprised of multiple physical files.  We need to have a
-     *         way of doing this, e.g. for column stores.  (We could always
-     *         impose that there must be one top-level file that records
-     *         details such as all the other files necessary for the storage
-     *         format.)
+     * @design (donnie) For tuple files that are comprised of multiple
+     *         physical files, this file will be the top-level file that
+     *         records details such as all the other files necessary for
+     *         that storage format.
      *
      * @return the {@code DBFile} object that this tuple file is stored in.
      */

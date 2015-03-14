@@ -131,7 +131,7 @@ public class SqlTestCase {
             FileUtils.cleanDirectory(testBaseDir);
         }
         catch (IOException e) {
-            System.err.println("Couldn't clean directory " + testBaseDir);
+            System.out.println("Couldn't clean directory " + testBaseDir);
             e.printStackTrace();
         }
     }
@@ -229,14 +229,14 @@ public class SqlTestCase {
             return true;
         }
         else {
-            System.err.println("Expected results:");
+            System.out.println("Expected results:");
             for (TupleLiteral tup : expected) {
-                System.err.println(" * " + tup.toString());
+                System.out.println(" * " + tup.toString());
             }
 
-            System.err.println("Actual results:");
+            System.out.println("Actual results:");
             for (Tuple tup : result.getTuples()) {
-                System.err.println(" * " + tup.toString());
+                System.out.println(" * " + tup.toString());
             }
 
             return false;
@@ -303,7 +303,22 @@ public class SqlTestCase {
         if (result.failed())
             throw result.getFailure();
 
-        return sameResultsOrdered(expected, result.getTuples());
+        if (sameResultsOrdered(expected, result.getTuples())) {
+            return true;
+        }
+        else {
+            System.out.println("Expected results:");
+            for (TupleLiteral tup : expected) {
+                System.out.println(" * " + tup.toString());
+            }
+
+            System.out.println("Actual results:");
+            for (Tuple tup : result.getTuples()) {
+                System.out.println(" * " + tup.toString());
+            }
+
+            return false;
+        }
     }
 
 

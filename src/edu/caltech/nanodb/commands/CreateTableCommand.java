@@ -6,11 +6,18 @@ import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.indexes.IndexManager;
+import edu.caltech.nanodb.indexes.IndexUtils;
+
 import edu.caltech.nanodb.relations.ColumnInfo;
+import edu.caltech.nanodb.relations.ColumnRefs;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
+import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.TableConstraintType;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.relations.TableSchema;
@@ -31,11 +38,12 @@ public class CreateTableCommand extends Command {
     public static final String PROP_PAGESIZE = "pagesize";
 
 
-    public static final String PROP_TYPE = "type";
+    public static final String PROP_STORAGE = "storage";
 
 
     /** Name of the table to be created. */
     private String tableName;
+
 
     /** If this flag is {@code true} then the table is a temporary table. */
     private boolean temporary;
@@ -151,7 +159,7 @@ public class CreateTableCommand extends Command {
             }
         }
 
-        // Set up the table-file info based on the command details.
+        // Set up the table's schema based on the command details.
 
         logger.debug("Creating a TableSchema object for the new table " +
             tableName + ".");
@@ -167,17 +175,24 @@ public class CreateTableCommand extends Command {
             }
         }
 
-        // Open all tables referenced by foreign-key constraints, so that we
-        // can verify the constraints.
-        HashMap<String, TableSchema> referencedTables =
-            new HashMap<String, TableSchema>();
+        // Do some basic verification of the table constraints:
+        //  * Verify that all named constraints are uniquely named.
+        //  * Open all tables referenced by foreign-key constraints, to ensure
+        //    they exist.  (More verification will occur later.)
+        HashSet<String> constraintNames = new HashSet<String>();
+        HashMap<String, TableInfo> referencedTables = new HashMap<>();
         for (ConstraintDecl cd: constraints) {
+            String name = cd.getName();
+            if (name != null && !constraintNames.add(name)) {
+                throw new ExecutionException("Constraint name " + name +
+                    " appears multiple times.");
+            }
+
             if (cd.getType() == TableConstraintType.FOREIGN_KEY) {
                 String refTableName = cd.getRefTable();
                 try {
                     TableInfo refTblInfo = tableManager.openTable(refTableName);
-                    TableSchema refSchema = refTblInfo.getSchema();
-                    referencedTables.put(refTableName, refSchema);
+                    referencedTables.put(refTableName, refTblInfo);
                 }
                 catch (FileNotFoundException e) {
                     throw new ExecutionException(String.format(
@@ -194,8 +209,9 @@ public class CreateTableCommand extends Command {
         // Get the table manager and create the table.
 
         logger.debug("Creating the new table " + tableName + " on disk.");
+        TableInfo tblInfo;
         try {
-            tableManager.createTable(tableName, schema, properties);
+            tblInfo = tableManager.createTable(tableName, schema, properties);
         }
         catch (IOException ioe) {
             throw new ExecutionException("Could not create table \"" +
@@ -203,7 +219,136 @@ public class CreateTableCommand extends Command {
         }
         logger.debug("New table " + tableName + " was created.");
 
+        // Now, initialize all the constraints on the table.
+
+        try {
+            initTableConstraints(storageManager, tblInfo, referencedTables);
+        }
+        catch (IOException e) {
+            throw new ExecutionException(
+                "Couldn't initialize all constraints on table " + tableName, e);
+        }
+
         out.println("Created table:  " + tableName);
+    }
+
+
+    private void initTableConstraints(StorageManager storageManager,
+        TableInfo tableInfo, HashMap<String, TableInfo> referencedTables)
+        throws ExecutionException, IOException {
+
+        if (constraints.isEmpty()) {
+            logger.debug("No table constraints specified, our work is done.");
+            return;
+        }
+
+        TableManager tableManager = storageManager.getTableManager();
+        IndexManager indexManager = storageManager.getIndexManager();
+        TableSchema tableSchema = tableInfo.getSchema();
+
+        logger.debug("Adding " + constraints.size() +
+            " constraints to the table.");
+
+        HashSet<String> constraintNames = new HashSet<String>();
+
+        for (ConstraintDecl cd : constraints) {
+            // Make sure that if constraint names are specified, every
+            // constraint is actually uniquely named.
+            if (cd.getName() != null) {
+                if (!constraintNames.add(cd.getName())) {
+                    throw new ExecutionException("Constraint name " +
+                        cd.getName() + " appears multiple times.");
+                }
+            }
+
+            TableConstraintType type = cd.getType();
+            if (type == TableConstraintType.PRIMARY_KEY) {
+                // Make a primary key constraint and put it on the schema.
+
+                int[] cols = tableSchema.getColumnIndexes(cd.getColumnNames());
+                KeyColumnRefs pk = new KeyColumnRefs(cd.getName(), cols,
+                    TableConstraintType.PRIMARY_KEY);
+
+                // Make the index.  This also updates the table schema with
+                // the fact that there is another candidate key on the table.
+                indexManager.addIndexToTable(tableInfo, pk);
+
+                // Add NOT NULL constraints for all primary key columns.
+                for (int i = 0; i < pk.size(); i++)
+                    tableSchema.addNotNull(pk.getCol(i));
+
+                tableSchema.setPrimaryKey(pk);
+            }
+            else if (type == TableConstraintType.UNIQUE) {
+                // Make a unique key constraint and put it on the schema.
+
+                int[] cols = tableSchema.getColumnIndexes(cd.getColumnNames());
+                KeyColumnRefs ck = new KeyColumnRefs(cd.getName(), cols,
+                    TableConstraintType.UNIQUE);
+
+                // Make the index.  This also updates the table schema with
+                // the fact that there is another candidate key on the table.
+                indexManager.addIndexToTable(tableInfo, ck);
+            }
+            else if (type == TableConstraintType.FOREIGN_KEY) {
+                // Make a foreign key constraint and put it on the schema.
+                // This involves three steps:
+                // 1)  Create the foreign-key constraint on this table's schema
+                // 2)  If there isn't already an index on the referencing
+                //     columns, create a non-unique index.
+                // 3)  Update the referenced table's schema to record the
+                //     foreign-key reference from this table.
+
+                // This should never be null since we already resolved all
+                // foreign-key table references earlier.
+                TableInfo refTableInfo = referencedTables.get(cd.getRefTable());
+                TableSchema refTableSchema = refTableInfo.getSchema();
+
+                // The makeForeignKey() method ensures that the referenced
+                // columns are also a candidate key (or primary key) on the
+                // referenced table.
+                ForeignKeyColumnRefs fk = IndexUtils.makeForeignKey(
+                    tableSchema, cd.getColumnNames(),
+                    cd.getRefTable(), refTableSchema, cd.getRefColumnNames(),
+                    cd.getOnDeleteOption(), cd.getOnUpdateOption());
+
+                fk.setConstraintName(cd.getName());
+                tableSchema.addForeignKey(fk);
+
+                // Check if there is already an index on the foreign-key
+                // columns.  If there is not, we will create a non-unique
+                // index on those columns.
+
+                int[] fkCols = tableSchema.getColumnIndexes(cd.getColumnNames());
+                ColumnRefs fkColRefs = tableSchema.getKeyOnColumns(new ColumnRefs(fkCols));
+                if (fkColRefs == null) {
+                    // Need to make a new index for this foreign-key reference
+                    fkColRefs = new ColumnRefs(cd.getName(), fkCols);
+                    fkColRefs.setConstraintType(TableConstraintType.FOREIGN_KEY);
+
+                    // Make the index.
+                    indexManager.addIndexToTable(tableInfo, fkColRefs);
+
+                    logger.debug(String.format(
+                        "Created index %s on table %s to enforce foreign key.",
+                        fkColRefs.getIndexName(), tableInfo.getTableName()));
+                }
+
+                // Finally, update the referenced table's schema to record
+                // that there is a foreign-key reference to the table.
+                refTableSchema.addRefTable(tableName, fkColRefs.getIndexName(),
+                    fk.getRefCols());
+                tableManager.saveTableInfo(refTableInfo);
+            }
+            else if (type == TableConstraintType.NOT_NULL) {
+                int idx = tableSchema.getColumnIndex(cd.getColumnNames().get(0));
+                tableSchema.addNotNull(idx);
+            }
+            else {
+                throw new ExecutionException("Unexpected constraint type " +
+                    cd.getType());
+            }
+        }
     }
 
 

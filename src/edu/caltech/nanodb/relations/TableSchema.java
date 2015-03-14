@@ -22,7 +22,7 @@ public class TableSchema extends Schema {
      * This object specifies the primary key on this table.  This key is not
      * also included in the {@link #candidateKeys} collection.
      */
-    private KeyColumnIndexes primaryKey;
+    private KeyColumnRefs primaryKey;
 
 
     /** A set recording which columns have NOT NULL constraints on them */
@@ -34,30 +34,33 @@ public class TableSchema extends Schema {
      * comprise candidate keys on this table.  This collection does not include
      * the primary key specified by the {@link #primaryKey} field.
      */
-    private ArrayList<KeyColumnIndexes> candidateKeys =
-        new ArrayList<KeyColumnIndexes>();
+    private ArrayList<KeyColumnRefs> candidateKeys =
+        new ArrayList<KeyColumnRefs>();
 
 
     /**
      * A collection of foreign-key objects specifying other tables that this
      * table references.
      */
-    private ArrayList<ForeignKeyColumnIndexes> foreignKeys =
-        new ArrayList<ForeignKeyColumnIndexes>();
+    private ArrayList<ForeignKeyColumnRefs> foreignKeys =
+        new ArrayList<ForeignKeyColumnRefs>();
 
 
     /**
      * This collection provides easy access to all the indexes defined on this
      * table, including those for candidate keys and the primary key.
      */
-    private HashMap<String, ColumnIndexes> indexes =
-        new HashMap<String, ColumnIndexes>();
+    private HashMap<String, ColumnRefs> indexes =
+        new HashMap<String, ColumnRefs>();
 
 
     /**
      * Adds a column with given index to list of NOT NULL constrained columns.
      *
      * @param colIndex the integer index of the column to NOT NULL constrain.
+     *
+     * @return true if the column previous was NULLable, or false if the
+     *         column already had a NOT NULL constraint on it before this call.
      */
     public boolean addNotNull(int colIndex) {
         if (colIndex < 0 || colIndex >= numColumns()) {
@@ -72,7 +75,7 @@ public class TableSchema extends Schema {
      * Removes a column with given index from the list of NOT NULL constrained
      * columns.
      *
-     * @param colIndex the integer index of the column to remove the NOT NULL 
+     * @param colIndex the integer index of the column to remove the NOT NULL
      *        constraint from.
      */
     public boolean removeNotNull(int colIndex) {
@@ -82,8 +85,8 @@ public class TableSchema extends Schema {
         }
         return notNullCols.remove(colIndex);
     }
-    
-    
+
+
     /**
      * Returns a set of columns that have a NOT NULL constraint, specified by
      * the indexes of the columns in the table schema.
@@ -93,15 +96,15 @@ public class TableSchema extends Schema {
     public Set<Integer> getNotNull() {
         return Collections.unmodifiableSet(notNullCols);
     }
-    
-    
+
+
     /**
      * Sets the primary key on this table.
      *
      * @param pk the primary key to set on the table, or <tt>null</tt> if the
      *        table has no primary key.
      */
-    public void setPrimaryKey(KeyColumnIndexes pk) {
+    public void setPrimaryKey(KeyColumnRefs pk) {
         if (pk == null)
             throw new IllegalArgumentException("pk cannot be null");
 
@@ -110,7 +113,7 @@ public class TableSchema extends Schema {
 
         if (primaryKey != null)
             throw new IllegalStateException("Table already has a primary key");
-        
+
         primaryKey = pk;
         indexes.put(pk.getIndexName(), pk);
     }
@@ -123,47 +126,48 @@ public class TableSchema extends Schema {
      * @return the primary key on this table, or <tt>null</tt> if there is no
      *         primary key.
      */
-    public KeyColumnIndexes getPrimaryKey() {
+    public KeyColumnRefs getPrimaryKey() {
         return primaryKey;
     }
 
 
-    public void addCandidateKey(KeyColumnIndexes ck) {
+    public void addCandidateKey(KeyColumnRefs ck) {
         if (ck == null)
             throw new IllegalArgumentException("ck cannot be null");
-        
+
         if (ck.getIndexName() == null)
             throw new IllegalArgumentException("ck must specify an index name");
 
         if (candidateKeys == null)
-            candidateKeys = new ArrayList<KeyColumnIndexes>();
+            candidateKeys = new ArrayList<KeyColumnRefs>();
 
         candidateKeys.add(ck);
         indexes.put(ck.getIndexName(), ck);
     }
 
 
-    public void addIndex(ColumnIndexes index) {
-        if (index == null)
-            throw new IllegalArgumentException("index cannot be null");
+    public void addIndex(ColumnRefs idx) {
+        if (idx == null)
+            throw new IllegalArgumentException("idx cannot be null");
 
-        if (index.getIndexName() == null)
-            throw new IllegalArgumentException("index must specify an index name");
+        if (idx.getIndexName() == null)
+            throw new IllegalArgumentException("idx must specify an index name");
 
-        indexes.put(index.getIndexName(), index);
+        indexes.put(idx.getIndexName(), idx);
     }
 
-    public void addRefTable(String tblName, String idxName, 
+
+    public void addRefTable(String tblName, String idxName,
         int[] referencedColumns) {
         // Find the primary or candidate key corresponding to referencedColumns
-        KeyColumnIndexes referencedIdx = null;
-        if (primaryKey != null && 
-            primaryKey.hasSameColumns(new ColumnIndexes(referencedColumns))) {
+        KeyColumnRefs referencedIdx = null;
+        if (primaryKey != null &&
+            primaryKey.hasSameColumns(new ColumnRefs(referencedColumns))) {
             referencedIdx = primaryKey;
         }
 
-        for (KeyColumnIndexes ck : candidateKeys) {
-            if (ck.hasSameColumns(new ColumnIndexes(referencedColumns))) {
+        for (KeyColumnRefs ck : candidateKeys) {
+            if (ck.hasSameColumns(new ColumnRefs(referencedColumns))) {
                 referencedIdx = ck;
             }
         }
@@ -184,9 +188,9 @@ public class TableSchema extends Schema {
         if (!indexes.containsKey(idxName))
             throw new IllegalArgumentException("table does not have this index to drop");
 
-        if (primaryKey != null && primaryKey.getIndexName().equals(idxName)) 
+        if (primaryKey != null && primaryKey.getIndexName().equals(idxName))
             primaryKey = null;
-        Iterator<KeyColumnIndexes> it = candidateKeys.iterator();
+        Iterator<KeyColumnRefs> it = candidateKeys.iterator();
         while (it.hasNext()) {
             if (it.next().getIndexName().equals(idxName))
                 it.remove();
@@ -202,7 +206,7 @@ public class TableSchema extends Schema {
     }
 
 
-    public List<KeyColumnIndexes> getCandidateKeys() {
+    public List<KeyColumnRefs> getCandidateKeys() {
         return Collections.unmodifiableList(candidateKeys);
     }
 
@@ -219,34 +223,40 @@ public class TableSchema extends Schema {
      * @return true if this table contains a primary or candidate key on the
      *         columns specified in <tt>k</tt>
      */
-    public boolean hasKeyOnColumns(ColumnIndexes k) {
-        if (primaryKey != null && primaryKey.hasSameColumns(k))
-            return true;
-
-        for (KeyColumnIndexes ck : candidateKeys) {
-            if (ck.hasSameColumns(k))
-                return true;
-        }
-
-        return false;
+    public boolean hasKeyOnColumns(ColumnRefs k) {
+        return (getKeyOnColumns(k) != null);
     }
 
-    public String keyNameOnColumns(ColumnIndexes k) {
-        if (primaryKey != null && primaryKey.hasSameColumns(k)) {
-            return primaryKey.getIndexName();
-        }
-        
-        for (KeyColumnIndexes ck : candidateKeys) {
+
+    public KeyColumnRefs getKeyOnColumns(ColumnRefs k) {
+        if (primaryKey != null && primaryKey.hasSameColumns(k))
+            return primaryKey;
+
+        for (KeyColumnRefs ck : candidateKeys)
             if (ck.hasSameColumns(k))
-                return ck.getIndexName();
-        }
+                return ck;
 
         return null;
     }
 
-    public void addForeignKey(ForeignKeyColumnIndexes fk) {
+
+    public List<KeyColumnRefs> getAllKeysOnColumns(ColumnRefs k) {
+        ArrayList<KeyColumnRefs> keys = new ArrayList<>();
+
+        if (primaryKey != null && primaryKey.hasSameColumns(k))
+            keys.add(primaryKey);
+
+        for (KeyColumnRefs ck : candidateKeys)
+            if (ck.hasSameColumns(k))
+                keys.add(ck);
+
+        return keys;
+    }
+
+
+    public void addForeignKey(ForeignKeyColumnRefs fk) {
         if (foreignKeys == null)
-            foreignKeys = new ArrayList<ForeignKeyColumnIndexes>();
+            foreignKeys = new ArrayList<ForeignKeyColumnRefs>();
 
         foreignKeys.add(fk);
     }
@@ -257,13 +267,18 @@ public class TableSchema extends Schema {
     }
 
 
-    public List<ForeignKeyColumnIndexes> getForeignKeys() {
+    public List<ForeignKeyColumnRefs> getForeignKeys() {
         return Collections.unmodifiableList(foreignKeys);
     }
 
 
-    public Map<String, ColumnIndexes> getIndexes() {
+    public Map<String, ColumnRefs> getIndexes() {
         return Collections.unmodifiableMap(indexes);
+    }
+
+
+    public ColumnRefs getIndex(String indexName) {
+        return indexes.get(indexName);
     }
 
 
@@ -272,18 +287,23 @@ public class TableSchema extends Schema {
      * indexes built on these columns.
      *
      * @param columnNames the names of columns to test for
-     * @return a list of index names built on the specified columns
+     * @return a set of index names built on the specified columns
      */
-    public List<String> getIndexName(List<String> columnNames) {
+    public Set<String> getIndexNames(List<String> columnNames) {
         int[] colIndexes = getColumnIndexes(columnNames);
-        ColumnIndexes index = new ColumnIndexes(colIndexes);
+        ColumnRefs index = new ColumnRefs(colIndexes);
 
-        ArrayList<String> indexNames = new ArrayList<String>();
-        for (Map.Entry<String, ColumnIndexes> entry : indexes.entrySet()) {
+        Set<String> indexNames = new HashSet<String>();
+        for (Map.Entry<String, ColumnRefs> entry : indexes.entrySet()) {
             if (index.hasSameColumns(entry.getValue()))
                 indexNames.add(entry.getKey());
         }
 
         return indexNames;
+    }
+
+
+    public Set<String> getIndexNames() {
+        return new HashSet<String>(indexes.keySet());
     }
 }

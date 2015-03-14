@@ -10,12 +10,17 @@ import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.TypeCastException;
 
+import edu.caltech.nanodb.indexes.BasicIndexManager;
+import edu.caltech.nanodb.indexes.IndexManager;
+
+import edu.caltech.nanodb.indexes.IndexUpdater;
 import edu.caltech.nanodb.server.EventDispatcher;
 import edu.caltech.nanodb.server.properties.PropertyHandler;
 import edu.caltech.nanodb.server.properties.PropertyRegistry;
 import edu.caltech.nanodb.server.properties.ReadOnlyPropertyException;
 import edu.caltech.nanodb.server.properties.UnrecognizedPropertyException;
 
+import edu.caltech.nanodb.storage.btreefile.BTreeTupleFileManager;
 import edu.caltech.nanodb.storage.heapfile.HeapTupleFileManager;
 import edu.caltech.nanodb.transactions.TransactionManager;
 
@@ -175,6 +180,9 @@ public class StorageManager {
     private TableManager tableManager;
 
 
+    private IndexManager indexManager;
+
+
     /**
      * This mapping is used to keep track of the tuple-file managers for all
      * the kinds of tuple-files we support.
@@ -231,6 +239,9 @@ public class StorageManager {
         tupleFileManagers.put(DBFileType.HEAP_TUPLE_FILE,
             new HeapTupleFileManager(this));
 
+        tupleFileManagers.put(DBFileType.BTREE_TUPLE_FILE,
+            new BTreeTupleFileManager(this));
+
         if (TransactionManager.isEnabled()) {
             logger.info("Initializing transaction manager.");
             transactionManager = new TransactionManager(this, bufferManager);
@@ -244,8 +255,17 @@ public class StorageManager {
         }
 
         tableManager = new IndexedTableManager(this);
+        indexManager = new BasicIndexManager(this);
 
         EventDispatcher eventDispatcher = EventDispatcher.getInstance();
+
+        if (ENABLE_INDEXES) {
+            // TODO:  Register the event-handler that enforces database constraints!
+            // eventDispatcher.addRowEventListener(new DatabaseConstraintEnforcer(this));
+
+            // Register the event-handler that updates indexes when tables change.
+            eventDispatcher.addRowEventListener(new IndexUpdater(this));
+        }
 
         initialized = true;
     }
@@ -356,6 +376,11 @@ public class StorageManager {
 
     public TableManager getTableManager() {
         return tableManager;
+    }
+
+
+    public IndexManager getIndexManager() {
+        return indexManager;
     }
 
 

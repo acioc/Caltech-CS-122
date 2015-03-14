@@ -11,7 +11,7 @@ import java.util.List;
  * indexes of the columns in the key.  The class also specifies the index
  * used to enforce the key in the database.
  */
-public class KeyColumnIndexes extends ColumnIndexes {
+public class KeyColumnRefs extends ColumnRefs {
 
     /**
      * This nested class simply records a referencing table and index that
@@ -58,16 +58,24 @@ public class KeyColumnIndexes extends ColumnIndexes {
     private ArrayList<FKReference> foreignKeyReferences;
 
 
-    public KeyColumnIndexes(String indexName, int[] colIndexes) {
-        super(indexName, colIndexes);
+    public KeyColumnRefs(String indexName, int[] colIndexes,
+                         TableConstraintType constraintType) {
+        super(indexName, colIndexes, constraintType);
+
+        if (constraintType != TableConstraintType.PRIMARY_KEY &&
+            constraintType != TableConstraintType.UNIQUE) {
+            throw new IllegalArgumentException("constraintType must be " +
+                "PRIMARY_KEY or UNIQUE, got " + constraintType);
+        }
+
         foreignKeyReferences = new ArrayList<FKReference>();
     }
 
-
-    public KeyColumnIndexes(int[] colIndexes) {
+/*
+    public KeyColumnRefs(int[] colIndexes) {
         this(null, colIndexes);
     }
-
+*/
 
     public String getConstraintName() {
         return constraintName;

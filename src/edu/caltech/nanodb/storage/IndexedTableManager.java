@@ -4,10 +4,14 @@ package edu.caltech.nanodb.storage;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.CommandProperties;
+import edu.caltech.nanodb.indexes.IndexManager;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
+import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.relations.TableSchema;
 
@@ -114,8 +118,9 @@ public class IndexedTableManager implements TableManager {
     // Inherit interface docs.
     @Override
     public void saveTableInfo(TableInfo tableInfo) throws IOException {
-        // TODO:  Implement!
-        throw new UnsupportedOperationException("NYI");
+        TupleFile tupleFile = tableInfo.getTupleFile();
+        TupleFileManager manager = tupleFile.getManager();
+        manager.saveMetadata(tupleFile);
     }
 
 
@@ -185,6 +190,72 @@ public class IndexedTableManager implements TableManager {
 
 
     private void dropTableIndexes(TableInfo tableInfo) throws IOException {
-        throw new UnsupportedOperationException("Not yet implemented!");
+        String tableName = tableInfo.getTableName();
+
+        // We need to open the table so that we can drop all related objects,
+        // such as indexes on the table, etc.
+        TableSchema schema = tableInfo.getTupleFile().getSchema();
+
+        // Check whether this table is referenced by any other tables via
+        // foreign keys.  Need to check the primary key and candidate keys.
+
+        KeyColumnRefs pk = schema.getPrimaryKey();
+        if (pk != null && !pk.getReferencingIndexes().isEmpty()) {
+            throw new IOException("Drop table failed due to the table" +
+                " having foreign key dependencies:  " + tableName);
+        }
+
+        List<KeyColumnRefs> candKeyList = schema.getCandidateKeys();
+        for (KeyColumnRefs candKey : candKeyList) {
+            if (!candKey.getReferencingIndexes().isEmpty()) {
+                throw new IOException("Drop table failed due to the table" +
+                    " having foreign key dependencies:  " + tableName);
+            }
+        }
+
+        // If we got here, the table being dropped is not a referenced table.
+        // Start cleaning up various schema objects for the table.
+
+        List<KeyColumnRefs> parentCandKeyList;
+        TableInfo parentTableInfo;
+        // Now drop the foreign key constraint fields that this table
+        // may have on other parent tables. Scan through this table's
+        // Foreign key indexes to see which tables need maintenance
+        List<ForeignKeyColumnRefs> forKeyList = schema.getForeignKeys();
+        for (ForeignKeyColumnRefs forKey : forKeyList) {
+            // Open the parent table, and iterate through all of its primary
+            // and candidate keys, dropping any foreign key constraints that
+            // refer to the child table with tableName
+            String parentTableName = forKey.getRefTable();
+            try {
+                parentTableInfo = openTable(parentTableName);
+            }
+            catch (Exception e) {
+                throw new IOException("The referenced table, " +
+                    parentTableName + ", which is referenced by " +
+                    tableName + ", does not exist.");
+            }
+
+            TableSchema parentSchema = parentTableInfo.getTupleFile().getSchema();
+            KeyColumnRefs parentPK = parentSchema.getPrimaryKey();
+
+            if (parentPK != null) {
+                parentPK.dropRefToTable(tableName);
+            }
+
+            parentCandKeyList = parentSchema.getCandidateKeys();
+            for (KeyColumnRefs parentCandKey : parentCandKeyList) {
+                parentCandKey.dropRefToTable(tableName);
+            }
+
+            // Persist the changes we made to the schema
+            saveTableInfo(parentTableInfo);
+        }
+
+        // Then drop the indexes since we've checked the constraints
+
+        IndexManager indexManager = storageManager.getIndexManager();
+        for (String indexName : schema.getIndexes().keySet())
+            indexManager.dropIndex(tableInfo, indexName);
     }
 }

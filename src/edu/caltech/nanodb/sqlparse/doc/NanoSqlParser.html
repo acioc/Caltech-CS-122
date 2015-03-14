@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <HTML>
 <HEAD>
-<TITLE>Grammar /Users/donnie/projects/nanodb-stu2015/res/nanosql.g</TITLE>
+<TITLE>Grammar /Users/donnie/projects/nanodb-sol2015/res/nanosql.g</TITLE>
 </HEAD>
 <BODY>
 <table summary="" border="1" cellpadding="5">
 <tr>
 <td>
 <font size="+2">Grammar NanoSqlParser</font><br>
-<a href="http://www.ANTLR.org">ANTLR</a>-generated HTML file from /Users/donnie/projects/nanodb-stu2015/res/nanosql.g
+<a href="http://www.ANTLR.org">ANTLR</a>-generated HTML file from /Users/donnie/projects/nanodb-sol2015/res/nanosql.g
 <p>
 Terence Parr, <a href="http://www.magelang.com">MageLang Institute</a>
 <br>ANTLR Version 2.7.7 (20060906); 1989-2005
@@ -53,7 +53,7 @@ Definition of parser NanoSqlParser, which is a subclass of LLkParser.
 		|	<a href="NanoSqlParser.html#explain_stmt">explain_stmt</a> 
 		|	<a href="NanoSqlParser.html#exit_stmt">exit_stmt</a> 
 		|	<a href="NanoSqlParser.html#crash_stmt">crash_stmt</a> 
-		|	<a href="NanoSqlParser.html#dump_stmt">dump_stmt</a> 
+		|	<a href="NanoSqlParser.html#dump_table_stmt">dump_table_stmt</a> 
 		|	<a href="NanoSqlParser.html#flush_stmt">flush_stmt</a> 
 		|	<a href="NanoSqlParser.html#verify_stmt">verify_stmt</a> 
 		|	<a href="NanoSqlParser.html#optimize_stmt">optimize_stmt</a> 
@@ -187,7 +187,7 @@ Definition of parser NanoSqlParser, which is a subclass of LLkParser.
 	;
 
 
-<a name="dump_stmt">dump_stmt</a>
+<a name="dump_table_stmt">dump_table_stmt</a>
 	:	DUMP TABLE <a href="NanoSqlParser.html#dbobj_ident">dbobj_ident</a> 
 		(	TO FILE STRING_LITERAL 
 		|	
@@ -575,6 +575,18 @@ Definition of parser NanoSqlParser, which is a subclass of LLkParser.
 
 <a name="insert_vals">insert_vals</a>
 	:	VALUES LPAREN <a href="NanoSqlParser.html#expression">expression</a> ( COMMA <a href="NanoSqlParser.html#expression">expression</a> )* RPAREN 
+	;
+
+
+<a name="dump_index_stmt">dump_index_stmt</a>
+	:	DUMP INDEX <a href="NanoSqlParser.html#dbobj_ident">dbobj_ident</a> ON TABLE <a href="NanoSqlParser.html#dbobj_ident">dbobj_ident</a> 
+		(	TO FILE STRING_LITERAL 
+		|	
+		) 
+		(	FORMAT <a href="NanoSqlParser.html#dbobj_ident">dbobj_ident</a> 
+		|	
+		) 
+		
 	;
 
 

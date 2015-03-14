@@ -38,6 +38,11 @@ public enum TableConstraintType {
     }
 
 
+    public boolean isUnique() {
+        return (this == UNIQUE || this == PRIMARY_KEY);
+    }
+
+
     /**
      * Given the specified ID, this method returns the corresponding constraint
      * type enum value, or it returns <code>null</code> if the type value doesn't

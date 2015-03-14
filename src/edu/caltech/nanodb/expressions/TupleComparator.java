@@ -45,8 +45,8 @@ public class TupleComparator implements Comparator<Tuple> {
 
     /** The epsilon used to compare floating-point values. */
     private static double EPSILON = 0.00000;
-    
-    
+
+
     /**
      * Construct a new tuple-comparator with the given ordering specification.
      *
@@ -152,14 +152,14 @@ public class TupleComparator implements Comparator<Tuple> {
 
         if (t2 == null)
             throw new IllegalArgumentException("t2 cannot be null");
-        
+
         if (t1.getColumnCount() != t2.getColumnCount())
             return false;
-        
+
         // Set the epsilon value
         if (epsilon.length == 1)
             EPSILON = epsilon[0];
-        
+
         int size = t1.getColumnCount();
         for (int i = 0; i < size; i++) {
             Object obj1 = t1.getColumnValue(i);
@@ -181,7 +181,7 @@ public class TupleComparator implements Comparator<Tuple> {
                 // Both objects are non-null.
                 TypeConverter.Pair p =
                 TypeConverter.coerceComparison(obj1, obj2);
-                
+
                 // Handle cases with errors in floating-point precision
                 if (p.value1 instanceof Double) {
                     double value1 = ((Double)p.value1).doubleValue();
@@ -195,7 +195,7 @@ public class TupleComparator implements Comparator<Tuple> {
                     if (Math.abs(value1 - value2) > EPSILON)
                         return false;
                 }
-                
+
                 else if (!p.value1.equals(p.value2))
                     return false;
             }
@@ -230,7 +230,7 @@ public class TupleComparator implements Comparator<Tuple> {
      *
      * @return a negative, positive, or zero value indicating the ordering of
      *         the two inputs
-     *         
+     *
      * @throws IllegalArgumentException if the two input tuples are different
      *         sizes.
      */
@@ -281,12 +281,12 @@ public class TupleComparator implements Comparator<Tuple> {
      * columns is controlled with a Boolean argument.
      *
      * @param t1 the first tuple to compare.  Must not be {@code null}.
-     * 
+     *
      * @param t2 the second tuple to compare.  Must not be {@code null}.
      *
      * @param allowSizeMismatch true if the two tuples are allowed to be
      *        different sizes, or false if they must be the same size.
-     * 
+     *
      * @return a negative, positive, or zero value indicating the ordering of
      *         the two inputs
      */
@@ -302,6 +302,13 @@ public class TupleComparator implements Comparator<Tuple> {
                 throw new IllegalArgumentException("tuples must be the same size");
         }
         else {
+            // If one of the tuples is an empty tuple, and the other one is
+            // not, we define this as the empty tuple being less than the
+            // non-empty tuple.
+            if (t1Size == 0 || t2Size == 0)
+                return t1Size - t2Size;
+
+            // Now we know that both tuples have at least one column.
             // Only compare the columns that are present in both tuples.
             t1Size = Math.min(t1Size, t2Size);
             t2Size = t1Size;
@@ -336,14 +343,14 @@ public class TupleComparator implements Comparator<Tuple> {
                 compareResult = 1;
                 break;
             }
-            
+
             // Now examine the values.
 
             Object objA = t1.getColumnValue(i);
             Object objB = t2.getColumnValue(i);
-            
+
             TypeConverter.Pair p = TypeConverter.coerceComparison(objA, objB);
-            
+
             Comparable valueA = (Comparable) objA;
             Comparable valueB = (Comparable) objB;
 

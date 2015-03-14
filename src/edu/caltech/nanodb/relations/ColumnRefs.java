@@ -10,7 +10,7 @@ import java.util.HashSet;
  * indexes of the columns in the set.  This is used to represent primary keys,
  * candidate keys, foreign keys, and columns in indexes.
  */
-public class ColumnIndexes {
+public class ColumnRefs {
     /**
      * This is the actual name for referring to the index.  It is mapped to
      * an index filename, where the index is actually stored.
@@ -22,12 +22,15 @@ public class ColumnIndexes {
     private int[] colIndexes;
 
 
-    public ColumnIndexes(int[] colIndexes) {
-        this(null, colIndexes);
-    }
+    /**
+     * If this index was created to enforce a particular table constraint,
+     * this field specifies the kind of constraint it is used to enforce.
+     */
+    private TableConstraintType constraintType;
 
 
-    public ColumnIndexes(String indexName, int[] colIndexes) {
+    protected ColumnRefs(String indexName, int[] colIndexes,
+                      TableConstraintType constraintType) {
         if (colIndexes == null)
             throw new IllegalArgumentException("colIndexes must be specified");
 
@@ -57,6 +60,18 @@ public class ColumnIndexes {
         }
 
         this.colIndexes = colIndexes;
+
+        this.constraintType = constraintType;
+    }
+
+
+    public ColumnRefs(int[] colIndexes) {
+        this(null, colIndexes, null);
+    }
+
+
+    public ColumnRefs(String indexName, int[] colIndexes) {
+        this(indexName, colIndexes, null);
     }
 
 
@@ -83,7 +98,7 @@ public class ColumnIndexes {
      * @return true if the two objects have the same column indexes, in the
      *         exact same order
      */
-    public boolean equalsColumns(ColumnIndexes ci) {
+    public boolean equalsColumns(ColumnRefs ci) {
         return Arrays.equals(colIndexes, ci.colIndexes);
     }
 
@@ -97,7 +112,7 @@ public class ColumnIndexes {
      * @return true if the two objects have the same column indexes,
      *         independent of order
      */
-    public boolean hasSameColumns(ColumnIndexes ci) {
+    public boolean hasSameColumns(ColumnRefs ci) {
         HashSet<Integer> indexes = new HashSet<Integer>();
         for (int i : colIndexes)
             indexes.add(i);
@@ -120,6 +135,16 @@ public class ColumnIndexes {
 
     public void setIndexName(String indexName) {
         this.indexName = indexName;
+    }
+
+
+    public void setConstraintType(TableConstraintType constraintType) {
+        this.constraintType = constraintType;
+    }
+
+
+    public TableConstraintType getConstraintType() {
+        return constraintType;
     }
 
 

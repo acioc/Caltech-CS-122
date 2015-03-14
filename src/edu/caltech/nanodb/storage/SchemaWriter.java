@@ -11,12 +11,12 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-import edu.caltech.nanodb.relations.ColumnIndexes;
+import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.ColumnInfo;
 import edu.caltech.nanodb.relations.ColumnType;
-import edu.caltech.nanodb.relations.ForeignKeyColumnIndexes;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
 import edu.caltech.nanodb.relations.ForeignKeyValueChangeOption;
-import edu.caltech.nanodb.relations.KeyColumnIndexes;
+import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.SQLDataType;
 import edu.caltech.nanodb.relations.TableConstraintType;
 import edu.caltech.nanodb.relations.TableSchema;
@@ -294,7 +294,7 @@ public class SchemaWriter {
 
         // Count how many constraints we have to write.
         int numConstraints = schema.numCandidateKeys() + schema.numForeignKeys();
-        KeyColumnIndexes pk = schema.getPrimaryKey();
+        KeyColumnRefs pk = schema.getPrimaryKey();
         if (pk != null)
             numConstraints++;
 
@@ -304,10 +304,10 @@ public class SchemaWriter {
         if (pk != null)
             writeKey(pgWriter, TableConstraintType.PRIMARY_KEY, pk);
 
-        for (KeyColumnIndexes ck : schema.getCandidateKeys())
+        for (KeyColumnRefs ck : schema.getCandidateKeys())
             writeKey(pgWriter, TableConstraintType.UNIQUE, ck);
 
-        for (ForeignKeyColumnIndexes fk : schema.getForeignKeys())
+        for (ForeignKeyColumnRefs fk : schema.getForeignKeys())
             writeForeignKey(pgWriter, fk);
 
         if (logger.isDebugEnabled()) {
@@ -334,7 +334,7 @@ public class SchemaWriter {
      *         <tt>null</tt>, or is not one of the accepted values
      */
     protected void writeKey(PageWriter pgWriter, TableConstraintType type,
-                            KeyColumnIndexes key) {
+                            KeyColumnRefs key) {
 
         if (type == TableConstraintType.PRIMARY_KEY) {
             logger.debug(String.format(" * Primary key %s, enforced with " +
@@ -371,9 +371,9 @@ public class SchemaWriter {
         pgWriter.writeVarString255(key.getIndexName());
 
         // Record all tables and indexes that reference this key.
-        List<KeyColumnIndexes.FKReference> fkRefs = key.getReferencingIndexes();
+        List<KeyColumnRefs.FKReference> fkRefs = key.getReferencingIndexes();
         pgWriter.writeByte(fkRefs.size());
-        for (KeyColumnIndexes.FKReference fkRef : fkRefs) {
+        for (KeyColumnRefs.FKReference fkRef : fkRefs) {
             pgWriter.writeVarString255(fkRef.tableName);
             pgWriter.writeVarString255(fkRef.indexName);
         }
@@ -381,7 +381,7 @@ public class SchemaWriter {
 
 
     protected void writeForeignKey(PageWriter pgWriter,
-                                   ForeignKeyColumnIndexes key) {
+                                   ForeignKeyColumnRefs key) {
         logger.debug(" * Foreign key " + key);
 
         // Constraint type, and name of constraint if it's specified.
@@ -422,7 +422,7 @@ public class SchemaWriter {
         logger.debug("Writing " + numIndexes + " indexes");
         pgWriter.writeByte(numIndexes);
 
-        Map<String, ColumnIndexes> idxMap = schema.getIndexes();
+        Map<String, ColumnRefs> idxMap = schema.getIndexes();
         for (String indexName : idxMap.keySet())
             writeIndex(pgWriter, idxMap.get(indexName));
 
@@ -445,7 +445,7 @@ public class SchemaWriter {
      * @throws IllegalArgumentException if the <tt>type</tt> argument is
      *         <tt>null</tt>, or is not one of the accepted values
      */
-    protected void writeIndex(PageWriter hpWriter, ColumnIndexes idx) {
+    protected void writeIndex(PageWriter hpWriter, ColumnRefs idx) {
 
         logger.debug(String.format(" * Index %s, enforced with index %s",
                                       idx, idx.getIndexName()));
@@ -553,8 +553,8 @@ public class SchemaWriter {
             for (int iCh = 0; iCh < colName.length(); iCh++) {
                 char ch = colName.charAt(iCh);
 
-                if (iCh == 0 && !(Character.isLetter(ch) || ch == '_') ||
-                        iCh > 0 && !(Character.isLetterOrDigit(ch) || ch == '_')) {
+                if (iCh == 0 && !(Character.isLetter(ch) || ch == '_' || ch == '#') ||
+                    iCh > 0 && !(Character.isLetterOrDigit(ch) || ch == '_')) {
                     throw new IOException(String.format("Name of column " +
                         "%d \"%s\" has an invalid character at index %d.",
                         iCol, colName, iCh));
@@ -598,7 +598,7 @@ public class SchemaWriter {
             if (cType == null)
                 throw new IOException("Unrecognized constraint-type value " + cTypeID);
 
-            KeyColumnIndexes key;
+            KeyColumnRefs key;
             switch (cType) {
                 case PRIMARY_KEY:
                     key = readKey(pgReader, cTypeID,
@@ -613,7 +613,7 @@ public class SchemaWriter {
                     break;
 
                 case FOREIGN_KEY:
-                    ForeignKeyColumnIndexes fkey =
+                    ForeignKeyColumnRefs fkey =
                         readForeignKey(pgReader, cTypeID);
                     schema.addForeignKey(fkey);
                     break;
@@ -648,7 +648,7 @@ public class SchemaWriter {
      * @throws IllegalArgumentException if the <tt>type</tt> argument is
      *         <tt>null</tt>, or is not one of the accepted values
      */
-    protected KeyColumnIndexes readKey(PageReader pgReader, int typeID,
+    protected KeyColumnRefs readKey(PageReader pgReader, int typeID,
                                        TableConstraintType type) {
 
         if (type == TableConstraintType.PRIMARY_KEY) {
@@ -676,7 +676,7 @@ public class SchemaWriter {
         // This should always be specified.
         String indexName = pgReader.readVarString255();
 
-        KeyColumnIndexes key = new KeyColumnIndexes(indexName, keyCols);
+        KeyColumnRefs key = new KeyColumnRefs(indexName, keyCols, type);
         key.setConstraintName(constraintName);
 
         // Read in all tables and indexes that reference this key.
@@ -690,7 +690,7 @@ public class SchemaWriter {
     }
 
 
-    protected ForeignKeyColumnIndexes readForeignKey(PageReader pgReader, int typeID) {
+    protected ForeignKeyColumnRefs readForeignKey(PageReader pgReader, int typeID) {
         logger.debug(" * Reading foreign key");
 
         // Read the constraint's name, if it's specified.
@@ -719,8 +719,8 @@ public class SchemaWriter {
             refCols[i] = pgReader.readUnsignedByte();
         }
 
-        ForeignKeyColumnIndexes fk = new ForeignKeyColumnIndexes(
-                                                                    keyCols, refTableName, refCols, onDeleteOption, onUpdateOption);
+        ForeignKeyColumnRefs fk = new ForeignKeyColumnRefs(
+            keyCols, refTableName, refCols, onDeleteOption, onUpdateOption);
         fk.setConstraintName(constraintName);
 
         return fk;
@@ -748,7 +748,7 @@ public class SchemaWriter {
      * @throws IllegalArgumentException if the <tt>type</tt> argument is
      *         <tt>null</tt>, or is not one of the accepted values
      */
-    protected ColumnIndexes readIndex(PageReader pgReader) {
+    protected ColumnRefs readIndex(PageReader pgReader) {
 
         logger.debug(" * Reading index");
 
@@ -760,6 +760,6 @@ public class SchemaWriter {
         // This should always be specified.
         String indexName = pgReader.readVarString255();
 
-        return new KeyColumnIndexes(indexName, idxCols);
+        return new ColumnRefs(indexName, idxCols);
     }
 }
