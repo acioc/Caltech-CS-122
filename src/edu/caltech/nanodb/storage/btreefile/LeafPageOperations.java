@@ -695,10 +695,21 @@ public class LeafPageOperations {
             retTuple = leaf.addTuple(tuple);
         }
 
-        InnerPage parent = innerPageOps.loadPage(pagePath.get(pathSize - 2));
+        InnerPage parent;
         Tuple key = newLeaf.getTuple(0);
 
-        parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
+        if (pathSize < 2) {
+            DBPage dbParent = fileOps.getNewDataPage();
+            parent = InnerPage.init(dbParent, tupleFile.getSchema(), leaf.getPageNo(), key, newLeaf.getNextPageNo());
+            DBFile dbFile = tupleFile.getDBFile();
+            DBPage dbpHeader = storageManager.loadDBPage(dbFile, 0);
+            HeaderPage.setRootPageNo(dbpHeader, parent.getPageNo());
+        }
+        else {
+            parent = innerPageOps.loadPage(pagePath.get(pathSize - 2));
+            parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
+        }
+
 
         /* TODO:  IMPLEMENT THE REST OF THIS METHOD.
          *
