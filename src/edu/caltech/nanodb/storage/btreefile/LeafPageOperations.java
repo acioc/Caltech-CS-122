@@ -710,12 +710,14 @@ public class LeafPageOperations {
         // there is a special case where our path contains only the root
         // in this case we must create a new inner page as the parent
         // for our leaf. This page becomes the new root for the tree.
-        if (pathSize < 2) {
+        if (pathSize < 1) throw new IllegalArgumentException("pathSize should be at least 1!");
+        else if (pathSize < 2) {
             DBPage dbParent = fileOps.getNewDataPage();
-            parent = InnerPage.init(dbParent, tupleFile.getSchema(), leaf.getPageNo(), key, newLeaf.getNextPageNo());
+            parent = InnerPage.init(dbParent, tupleFile.getSchema(), leaf.getPageNo(), key, newLeaf.getPageNo());
             DBFile dbFile = tupleFile.getDBFile();
             DBPage dbpHeader = storageManager.loadDBPage(dbFile, 0);
             HeaderPage.setRootPageNo(dbpHeader, parent.getPageNo());
+
             int temp = pagePath.remove(pagePath.size() - 1);
             pagePath.add(parent.getPageNo());
             pagePath.add(temp);
