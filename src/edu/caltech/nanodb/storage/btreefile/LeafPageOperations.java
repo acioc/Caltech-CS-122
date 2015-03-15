@@ -726,8 +726,10 @@ public class LeafPageOperations {
         // otherwise we just add a new entry to the parent node
         // immediately after the original entry
         else {
-            parent = innerPageOps.loadPage(pagePath.get(pathSize - 2));
-            parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
+            parent = innerPageOps.loadPage(pagePath.get(pagePath.size() - 2));
+            pagePath.remove(pagePath.size() - 1);
+            innerPageOps.addTuple(parent, pagePath, leaf.getPageNo(), key, newLeaf.getPageNo());
+            // parent.addEntry(leaf.getPageNo(), key, newLeaf.getPageNo());
         }
 
         return retTuple;
