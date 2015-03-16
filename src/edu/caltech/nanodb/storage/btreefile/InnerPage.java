@@ -704,7 +704,7 @@ public class InnerPage implements DataPage {
     public TupleLiteral movePointersLeft(InnerPage leftSibling, int count,
                                          Tuple parentKey) {
 
-        if (count < 0 || count > numPointers) {
+        if (count <= 0 || count > numPointers) {
             throw new IllegalArgumentException("count must be in range (0, " +
                 numPointers + "), got " + count);
         }
@@ -722,6 +722,9 @@ public class InnerPage implements DataPage {
             }
         }
 
+        // the next unwritten key becomes the new key for the parent
+        Tuple newParentTuple = getKey(count - 1);
+        TupleLiteral ret = new TupleLiteral(newParentTuple);
 
         int leftEndOffset = leftSibling.endOffset;
         // First, we add the parent key tuple to the
@@ -730,23 +733,13 @@ public class InnerPage implements DataPage {
             leftEndOffset += parentKeyLen;
         }
 
-        // If the count is greater than one, we have to move some number of pointer/key pairs
-        if(count > 1) {
-            int moveEndOffset = getKey(count - 2).getEndOffset();
-            int len = moveEndOffset - OFFSET_FIRST_POINTER;
-            leftSibling.getDBPage().write(leftEndOffset, dbPage.getPageData(), OFFSET_FIRST_POINTER, len);
-            leftEndOffset += len;
-        }
+        int moveEndOffset = getKey(count - 1).getOffset();
+        int moveLen = moveEndOffset - OFFSET_FIRST_POINTER;
+        leftSibling.getDBPage().write(leftEndOffset, dbPage.getPageData(), OFFSET_FIRST_POINTER, moveLen);
+        leftEndOffset += moveLen;
 
-        // We write the final pointer from the current page to the left page
-        leftSibling.getDBPage().writeInt(leftEndOffset, getPointer(count - 1));
-        leftEndOffset += 2;
-
-        // we update the number of pointerss in the left page
+        // we update the number of pointers in the left page
         leftSibling.getDBPage().writeShort(leftSibling.OFFSET_NUM_POINTERS, leftSibling.getNumPointers() + count);
-
-        // the next unwritten key becomes the new key for the parent
-        Tuple newParentTuple = getKey(count - 1);
 
         // this int marks the end of the data to be removed from the current page
         int oldEndOffset = getKey(count - 1).getEndOffset();
@@ -754,10 +747,15 @@ public class InnerPage implements DataPage {
         // we move everything past oldEndOffset to the beginning of the page
         dbPage.moveDataRange(oldEndOffset, OFFSET_FIRST_POINTER, endOffset - oldEndOffset);
 
-        // we overwrite everything beyond the moved data with an array of zeros
+        // we overwrite everything beyond the moved data with an array of zeroes
+        // the last byte we moved was previously at endOffset. we moved everything back
+        // by oldEndOffset - OFFSET_FIRST_POINTER bytes, so everything past
+        // endOffset - oldEndOffset + OFFSET_FIRST_POINTER should be overwritten with zeroes
+        /*
         dbPage.setDataRange(endOffset - oldEndOffset + OFFSET_FIRST_POINTER,
                 oldEndOffset - OFFSET_FIRST_POINTER,
                 (byte) 0);
+        */
 
         // we update the number of pointers on the current page
         dbPage.writeShort(OFFSET_NUM_POINTERS, numPointers - count);
@@ -777,7 +775,7 @@ public class InnerPage implements DataPage {
         loadPageContents();
         leftSibling.loadPageContents();
 
-        return new TupleLiteral(newParentTuple);
+        return ret;
     }
 
 
@@ -945,7 +943,7 @@ public class InnerPage implements DataPage {
     public TupleLiteral movePointersRight(InnerPage rightSibling, int count,
                                           Tuple parentKey) {
 
-        if (count < 0 || count > numPointers) {
+        if (count <= 0 || count > numPointers) {
             throw new IllegalArgumentException("count must be in range [0, " +
                 numPointers + "), got " + count);
         }
@@ -975,35 +973,42 @@ public class InnerPage implements DataPage {
                     "non-empty sibling if no parent-key is specified!");
             }
         }
+
+        // Creating our new parent key to return
+        Tuple newParentTuple = getKey(numPointers - count - 1);
+        TupleLiteral ret = new TupleLiteral(newParentTuple);
+
+        // moveLen is the total length of data being move from left to right
+        // it is the amount we have to shift everything over by in the right tuple
         int moveLen = parentKeyLen;
         int beginningOffset = getKey(numPointers - count - 1).getEndOffset();
-        moveLen += endOffset - beginningOffset;
-        int rightOffset = rightSibling.OFFSET_FIRST_POINTER;
+        moveLen += (endOffset - beginningOffset);
+        int rightStartOffset = rightSibling.OFFSET_FIRST_POINTER;
 
+        // if the parent key isn't null we must move everything over in the right tuple by the move length
         if(parentKey != null) {
-            rightSibling.getDBPage().moveDataRange(rightOffset,
-                                                    rightOffset + moveLen,
+            rightSibling.getDBPage().moveDataRange(rightStartOffset,
+                                                    rightStartOffset + moveLen,
                                                     rightSibling.getSpaceUsedByEntries());
 
             // We write the parent key to the right page
-            PageTuple.storeTuple(rightSibling.getDBPage(), rightOffset + moveLen - parentKeyLen, schema, parentKey);
+            PageTuple.storeTuple(rightSibling.getDBPage(), rightStartOffset + moveLen - parentKeyLen, schema, parentKey);
         }
 
-        // We write the pointer/value pairs being transferred
-        rightSibling.getDBPage().write(rightOffset, getDBPage().getPageData(), beginningOffset, moveLen - parentKeyLen);
 
-        Tuple newParentTuple = getKey(numPointers - count - 1);
-        beginningOffset = getKey(numPointers - count - 2).getOffset() + 2;
+        // We write the pointer/value pairs being transferred
+        rightSibling.getDBPage().write(rightStartOffset, getDBPage().getPageData(), beginningOffset, moveLen - parentKeyLen);
+
+        beginningOffset = getKey(numPointers - count - 1).getOffset();
+
+        int overwriteLength = moveLen + getKey(numPointers - count - 1).getEndOffset() - beginningOffset;
 
         // We overwrite the transferred data with a byte array of 0s
-        getDBPage().setDataRange(beginningOffset, moveLen - parentKeyLen, (byte) 0);
+        getDBPage().setDataRange(beginningOffset, overwriteLength - parentKeyLen, (byte) 0);
 
         // We update the number of pointers for each page
         getDBPage().writeShort(OFFSET_NUM_POINTERS, numPointers - count);
         rightSibling.getDBPage().writeShort(rightSibling.OFFSET_NUM_POINTERS, rightSibling.getNumPointers() + count);
-
-        logger.debug("NEW NUMBER OF POINTERS FOR CURRENT PAGE: " + (numPointers - count));
-        logger.debug("NEW NUMBER OF POINTERS FOR RIGHT PAGE: " + (rightSibling.getNumPointers() + count));
 
         /* donnie's notes
          *
@@ -1029,7 +1034,7 @@ public class InnerPage implements DataPage {
                 rightSibling.toFormattedString());
         }
 
-        return new TupleLiteral(newParentTuple);
+        return ret;
     }
 
 

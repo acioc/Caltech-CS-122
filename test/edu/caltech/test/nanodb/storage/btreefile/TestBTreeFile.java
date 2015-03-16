@@ -156,14 +156,12 @@ public class TestBTreeFile extends SqlTestCase {
         runBTreeTest("btree_two_level", 10000, 1000, 20, 50, false);
     }
 
-
     public void testBTreeTableThreeLevelInsert() throws Exception {
         tryDoCommand("CREATE TABLE btree_three_level (a INTEGER, b VARCHAR(50)) " +
             "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_three_level", 100000, 5000, 150, 250, false);
     }
-
 
     public void testBTreeTableOnePageInsertDelete() throws Exception {
         tryDoCommand("CREATE TABLE btree_one_page_del (a INTEGER, b VARCHAR(20)) " +
@@ -195,4 +193,5 @@ public class TestBTreeFile extends SqlTestCase {
 
         runBTreeTest("btree_three_level_del", 120000, 5000, 150, 250, true);
     }
+ 
 }
