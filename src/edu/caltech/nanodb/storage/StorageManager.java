@@ -44,7 +44,7 @@ public class StorageManager {
     public static final boolean ENABLE_TRANSACTIONS = false;
 
 
-    public static final boolean ENABLE_INDEXES = false;
+    public static final boolean ENABLE_INDEXES = true;
 
 
     /**
