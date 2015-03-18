@@ -77,7 +77,7 @@ public class InsertCommand extends QueryCommand {
             Tuple newTuple = tupleFile.addTuple(tuple);
             eventDispatch.fireAfterRowInserted(tableInfo, newTuple);
             //unpins the tuple after it was inserted
-            tuple.unpin();
+            //tuple.unpin();
         }
 
         public void finish() {

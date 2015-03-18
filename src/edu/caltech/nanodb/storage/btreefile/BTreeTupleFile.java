@@ -397,7 +397,6 @@ public class BTreeTupleFile implements SequentialTupleFile {
      */
     private LeafPage navigateToLeafPage(Tuple searchKey,
         boolean createIfNeeded, List<Integer> pagePath) throws IOException {
-
         // The header page tells us where the root page starts.
         DBPage dbpHeader = storageManager.loadDBPage(dbFile, 0);
 

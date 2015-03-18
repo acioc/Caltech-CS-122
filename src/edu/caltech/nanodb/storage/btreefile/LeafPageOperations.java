@@ -660,7 +660,6 @@ public class LeafPageOperations {
      */
     private BTreeFilePageTuple splitLeafAndAddTuple(LeafPage leaf,
         List<Integer> pagePath, TupleLiteral tuple) throws IOException {
-        System.out.println("splitting!");
         int pathSize = pagePath.size();
         if (pagePath.get(pathSize - 1) != leaf.getPageNo()) {
             throw new IllegalArgumentException(

@@ -245,6 +245,7 @@ public class BasicIndexManager implements IndexManager {
 
         // Cache this index since it's now considered "open".
         openIndexes.put(indexInfo.getTableName(), indexInfo);
+        storageManager.flushAllData();
     }
 
 

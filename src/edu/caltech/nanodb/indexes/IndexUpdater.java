@@ -118,7 +118,7 @@ public class IndexUpdater implements RowEventListener {
      * @param ptup the new tuple that was inserted into the table
      */
     private void addRowToIndexes(TableInfo tblFileInfo, PageTuple ptup) {
-        logger.debug("Adding tuple " + ptup + " to indexes for table " +
+        logger.debug("@@@ Adding tuple " + ptup + " to indexes for table " +
             tblFileInfo.getTableName());
 
         // Iterate over the indexes in the table.
@@ -179,7 +179,7 @@ public class IndexUpdater implements RowEventListener {
      */
     private void removeRowFromIndexes(TableInfo tblFileInfo, PageTuple ptup) {
 
-        logger.debug("Removing tuple " + ptup + " from indexes for table " +
+        logger.debug("@@@ Removing tuple " + ptup + " from indexes for table " +
             tblFileInfo.getTableName());
 
         // Iterate over the indexes in the table.

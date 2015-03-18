@@ -139,7 +139,7 @@ public class HeapTupleFile implements TupleFile {
                         continue;
 
                     //unpins the page once the tuple has been found
-                    dbPage.unpin();
+                    // dbPage.unpin();
 
                     // This is the first tuple in the file.  Build up the
                     // HeapFilePageTuple object and return it.
@@ -147,7 +147,7 @@ public class HeapTupleFile implements TupleFile {
                 }
 
                 // If we got here, the page has no tuples.  Unpin the page.
-                dbPage.unpin();
+                // dbPage.unpin();
             }
         }
         catch (EOFException e) {
@@ -203,7 +203,7 @@ public class HeapTupleFile implements TupleFile {
                 " on page " + fptr.getPageNo() + " is empty.");
         }
         //unpins the page once the tuple location has been identified
-        dbPage.unpin();
+        // dbPage.unpin();
 
         return new HeapFilePageTuple(schema, dbPage, slot, offset);
     }
@@ -244,7 +244,7 @@ public class HeapTupleFile implements TupleFile {
                 int nextOffset = DataPage.getSlotValue(dbPage, nextSlot);
                 if (nextOffset != DataPage.EMPTY_SLOT) {
                     //when the next tuple's location has been found, unpin the page
-                    dbPage.unpin();
+                    // dbPage.unpin();
                     return new HeapFilePageTuple(schema, dbPage, nextSlot,
                                                  nextOffset);
                 }
@@ -259,7 +259,7 @@ public class HeapTupleFile implements TupleFile {
             try {
                 DBPage nextDBPage =
                     storageManager.loadDBPage(dbFile, dbPage.getPageNo() + 1);
-                dbPage.unpin();
+                // dbPage.unpin();
                 dbPage = nextDBPage;
 
                 nextSlot = 0;
@@ -270,7 +270,7 @@ public class HeapTupleFile implements TupleFile {
                 //unpins the current page if it exists.  If the loop went
                 //past the end of the pages, does nothing
                 if(dbPage!=null){
-                    dbPage.unpin();
+                    // dbPage.unpin();
                 }
                 return null;
             }
@@ -354,7 +354,7 @@ public class HeapTupleFile implements TupleFile {
             pageNo = (short) dbFile.getNumPages();
             logger.debug("Creating new page " + pageNo + " to store new tuple.");
             if(dbPage != null){
-                dbPage.unpin();
+                // dbPage.unpin();
             }
             dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
             DataPage.initNewPage(dbPage);
@@ -368,8 +368,8 @@ public class HeapTupleFile implements TupleFile {
             DataPage.setNextPage(headerPage, pageNo);
             DataPage.setLastPage(oldNextPage, pageNo);
             // after references are fixed, unpin surrounding pages
-            oldNextPage.unpin();
-            headerPage.unpin();
+           // oldNextPage.unpin();
+           // headerPage.unpin();
         }
 
         int slot = DataPage.allocNewTuple(dbPage, tupSize);
@@ -397,11 +397,11 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(dbPage, (short) -1);
             DataPage.setNextPage(dbPage, (short) -1);
-            prevPage.unpin();
-            nextPage.unpin();
+            // prevPage.unpin();
+            // nextPage.unpin();
         }
-        pageTup.unpin();
-        dbPage.unpin();
+        // pageTup.unpin();
+        // dbPage.unpin();
         logger.debug("about to call logDBPageWrite");
         storageManager.logDBPageWrite(dbPage);
         logger.debug("successfully called logDBPageWrite");
@@ -458,8 +458,8 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(dbPage, (short) -1);
             DataPage.setNextPage(dbPage, (short) -1);
-            prevPage.unpin();
-            nextPage.unpin();
+            // prevPage.unpin();
+            // nextPage.unpin();
         }
 
         if(DataPage.getFreeSpaceInPage(dbPage) > tupSize
@@ -474,10 +474,10 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
             DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
-            headerPage.unpin();
-            oldNextPage.unpin();
+            // headerPage.unpin();
+            // oldNextPage.unpin();
         }
-        dbPage.unpin();
+        // dbPage.unpin();
         storageManager.logDBPageWrite(dbPage);
     }
 
@@ -518,10 +518,10 @@ public class HeapTupleFile implements TupleFile {
 
             DataPage.setLastPage(oldNextPage, (short) dbPage.getPageNo());
             DataPage.setNextPage(headerPage, (short) dbPage.getPageNo());
-            headerPage.unpin();
-            oldNextPage.unpin();
+            // headerPage.unpin();
+            // oldNextPage.unpin();
         }
-        dbPage.unpin();
+        // dbPage.unpin();
         storageManager.logDBPageWrite(dbPage);
     }
 
